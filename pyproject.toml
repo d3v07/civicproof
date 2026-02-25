@@ -1,0 +1,40 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP", "S", "B"]
+ignore = [
+  "S101",  # assert in tests is fine
+  "B008",  # FastAPI Depends() patterns
+]
+exclude = [".venv", "venv", "build", "dist"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S", "N"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+  "unit: unit tests",
+  "integration: integration tests (requires running services)",
+  "contract: contract tests for upstream connectors",
+  "e2e: end-to-end tests",
+  "red_team: adversarial / security tests",
+  "slow: marks tests as slow",
+]
+
+[tool.coverage.run]
+source = ["packages", "services"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

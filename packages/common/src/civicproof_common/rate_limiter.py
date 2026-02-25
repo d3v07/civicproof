@@ -83,10 +83,23 @@ class RateLimiter:
         logger.debug("rate_limit source=%s acquired=%s", source, acquired)
         return acquired
 
-    async def wait_for_token(self, source: str) -> None:
+    async def wait_for_token(self, source: str, max_retries: int = 60) -> None:
+        """Wait until a rate limit token is available.
+
+        Args:
+            source: The source identifier.
+            max_retries: Maximum number of retry attempts before raising.
+
+        Raises:
+            TimeoutError: If token not acquired after max_retries attempts.
+        """
         limit = self._get_limit(source)
         wait_seconds = 1.0 / limit.tokens_per_second
-        while True:
+        for attempt in range(max_retries):
             if await self.acquire(source):
                 return
             await asyncio.sleep(min(wait_seconds, 1.0))
+        raise TimeoutError(
+            f"Rate limit token not acquired for source={source} "
+            f"after {max_retries} attempts"
+        )

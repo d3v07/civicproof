@@ -17,10 +17,8 @@ jobs:
       - name: Scan for secrets
         uses: trufflesecurity/trufflehog@main
         with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
           extra_args: --only-verified
+        continue-on-error: false
 
   lint:
     name: Lint & Type Check
@@ -34,8 +32,14 @@ jobs:
         run: pip install ruff mypy
       - name: Ruff lint
         run: ruff check .
-      - name: Type check (when types added)
-        run: echo "mypy checks will be added per service"
+      - name: Mypy type check
+        run: |
+          PY_FILES=$(find packages services -name "*.py" 2>/dev/null | head -1)
+          if [ -n "$PY_FILES" ]; then
+            mypy packages/ services/ --ignore-missing-imports
+          else
+            echo "No Python source files to type check yet"
+          fi
 
   test:
     name: Tests
@@ -73,16 +77,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest pytest-cov pytest-asyncio hypothesis
-          if [ -f packages/common/requirements.txt ]; then pip install -r packages/common/requirements.txt; fi
+          for req in packages/*/requirements.txt services/*/requirements.txt; do
+            [ -f "$req" ] && pip install -r "$req"
+          done
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://civicproof:testpass@localhost:5432/civicproof_test
           REDIS_URL: redis://localhost:6379/0
         run: |
-          pytest tests/unit/ -v --cov=packages --cov=services --cov-report=xml --cov-fail-under=80
+          if [ -d tests/unit ] && [ -n "$(find tests/unit -name 'test_*.py' 2>/dev/null)" ]; then
+            pytest tests/unit/ -v --cov=packages --cov=services --cov-report=xml --cov-fail-under=80
+          else
+            echo "No unit tests found — skipping (tests/unit/ must contain test_*.py files)"
+          fi
       - name: Run contract tests
-        run: pytest tests/contract/ -v || echo "Contract tests not yet implemented"
+        run: |
+          if [ -d tests/contract ] && [ -n "$(find tests/contract -name 'test_*.py' 2>/dev/null)" ]; then
+            pytest tests/contract/ -v
+          else
+            echo "No contract tests found — skipping"
+          fi
       - name: Upload coverage
+        if: hashFiles('coverage.xml') != ''
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
@@ -101,5 +117,5 @@ jobs:
           if [ -f services/${{ matrix.service }}/Dockerfile ]; then
             docker build services/${{ matrix.service }} -t civicproof-${{ matrix.service }}:test
           else
-            echo "Dockerfile for ${{ matrix.service }} not yet created"
+            echo "Dockerfile for ${{ matrix.service }} not yet created — skipping"
           fi

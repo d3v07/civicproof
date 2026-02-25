@@ -17,6 +17,15 @@ ignore = [
 python_version = "3.11"
 strict = false
 ignore_missing_imports = true
+explicit_package_bases = true
+mypy_path = [
+  "packages/common/src",
+  "packages/eval/src",
+  "services/api/src",
+  "services/worker/src",
+  "services/gateway/src",
+]
+exclude = ["migrations/versions"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

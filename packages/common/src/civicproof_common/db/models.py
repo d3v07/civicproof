@@ -175,6 +175,10 @@ class RelationshipModel(Base):
     rel_type: Mapped[str] = mapped_column(String(64), nullable=False)
     evidence_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    provenance_artifact_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True
+    )
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

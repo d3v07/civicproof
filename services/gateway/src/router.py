@@ -9,6 +9,7 @@ from civicproof_common.config import get_settings
 from .providers.openrouter import OpenRouterProvider
 from .providers.vertex import VertexAIProvider
 from .providers.vllm_local import VLLMLocalProvider
+from .providers.gemini_free import GeminiFreeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,14 @@ class ModelRouter:
         self._vertex = VertexAIProvider()
         self._openrouter = OpenRouterProvider()
         self._vllm = VLLMLocalProvider()
+        self._gemini_free = None
+        if self._settings.GEMINI_API_KEY:
+            self._gemini_free = GeminiFreeProvider()
 
     def _select_provider(self, task_type: TaskType) -> str:
+        if self._settings.GEMINI_API_KEY:
+            return "gemini_free"
+
         if self._settings.DEBUG or not self._settings.GCP_PROJECT_ID:
             if self._settings.OPENROUTER_API_KEY:
                 return "openrouter"
@@ -57,6 +64,7 @@ class ModelRouter:
         )
 
         provider_map = {
+            "gemini_free": self._gemini_free,
             "vertex": self._vertex,
             "openrouter": self._openrouter,
             "vllm": self._vllm,
@@ -74,7 +82,7 @@ class ModelRouter:
         except Exception as exc:
             logger.warning("primary provider %s failed: %s, trying fallback", provider_name, exc)
 
-        fallback_order = [p for p in ["openrouter", "vllm", "vertex"] if p != provider_name]
+        fallback_order = [p for p in ["gemini_free", "openrouter", "vllm", "vertex"] if p != provider_name]
         for fallback_name in fallback_order:
             provider = provider_map[fallback_name]
             try:
@@ -99,6 +107,7 @@ class ModelRouter:
     ) -> dict[str, Any]:
         provider_name = self._select_provider(TaskType.EMBEDDING)
         provider_map = {
+            "gemini_free": self._gemini_free,
             "vertex": self._vertex,
             "openrouter": self._openrouter,
             "vllm": self._vllm,
@@ -109,7 +118,7 @@ class ModelRouter:
         except Exception as exc:
             logger.warning("embed provider %s failed: %s", provider_name, exc)
 
-        for fallback_name in ["openrouter", "vllm", "vertex"]:
+        for fallback_name in ["gemini_free", "openrouter", "vllm", "vertex"]:
             if fallback_name == provider_name:
                 continue
             try:

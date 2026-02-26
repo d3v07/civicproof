@@ -3,13 +3,11 @@
 All parsers are pure functions — no mocking needed.
 """
 
-import pytest
 
-from parsers.usaspending import parse_usaspending_award
 from parsers.doj import parse_doj_press_release
-from parsers.sec_edgar import parse_sec_filing
 from parsers.oversight import parse_ig_report
-
+from parsers.sec_edgar import parse_sec_filing
+from parsers.usaspending import parse_usaspending_award
 
 # ── USAspending Parser ─────────────────────────────────────────────
 
@@ -69,7 +67,10 @@ class TestDOJParser:
     def test_amount_extraction(self):
         data = {
             "title": "Company Agrees to Pay $2.5 Million",
-            "body": "The company agreed to pay $2.5 million to resolve False Claims Act allegations.",
+            "body": (
+                "The company agreed to pay $2.5 million to resolve "
+                "False Claims Act allegations."
+            ),
         }
         result = parse_doj_press_release(data)
         assert len(result["settlement_amounts"]) >= 1

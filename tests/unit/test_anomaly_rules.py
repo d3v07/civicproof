@@ -4,10 +4,8 @@ All detectors are pure functions — same input always produces same output.
 No mocking needed.
 """
 
-import pytest
 
 from civicproof_common.anomalies.rules import (
-    AnomalyResult,
     detect_all_anomalies,
     detect_geographic_mismatch,
     detect_modification_inflation,
@@ -16,7 +14,6 @@ from civicproof_common.anomalies.rules import (
     detect_shared_address_ring,
     detect_sole_source_concentration,
 )
-
 
 # ── 1. Sole-source concentration ──────────────────────────────────
 
@@ -150,7 +147,11 @@ class TestRapidAwarding:
 class TestSharedAddressRing:
     def test_ring_detected(self):
         entities = [
-            {"entity_id": f"e{i}", "canonical_name": f"Vendor {i}", "address": "123 Main St, Suite 100, Anytown, VA"}
+            {
+                "entity_id": f"e{i}",
+                "canonical_name": f"Vendor {i}",
+                "address": "123 Main St, Suite 100, Anytown, VA",
+            }
             for i in range(4)
         ]
         results = detect_shared_address_ring(entities, min_entities=3)

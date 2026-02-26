@@ -26,7 +26,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ── Banned accusatory phrases ──────────────────────────────────────
 BANNED_PHRASES = [
     "committed fraud",
@@ -289,7 +288,7 @@ class AuditorGate:
                 details={"skipped_reason": "no reference hashes provided"},
             )
 
-        for claim_id, citations in citation_index.items():
+        for _claim_id, citations in citation_index.items():
             for cit in citations:
                 artifact_id = cit.get("artifact_id", "")
                 provided_hash = cit.get("content_hash")

@@ -8,7 +8,6 @@ Courtesy rate limit: 2 RPS. No API key required.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from .base import BaseConnector, FetchParams, FetchResult

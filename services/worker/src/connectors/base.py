@@ -12,7 +12,6 @@ import httpx
 from civicproof_common.hashing import content_hash
 from civicproof_common.rate_limiter import RateLimiter
 
-
 USER_AGENT = "CivicProof/0.1 (+https://github.com/d3v07/civicproof)"
 
 # Timeout defaults (seconds)

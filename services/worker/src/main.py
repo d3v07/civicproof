@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import http.server
 import logging
 import signal
+import threading
 
 import redis.asyncio as aioredis
 from civicproof_common.config import get_settings
@@ -76,10 +78,6 @@ async def _process_message(redis_client: aioredis.Redis, raw: str) -> None:
             await redis_client.lpush(DEAD_LETTER_KEY, raw)
 
 
-import http.server
-import threading
-
-
 class _HealthHandler(http.server.BaseHTTPRequestHandler):
     """Minimal HTTP handler for Cloud Run health probes."""
 
@@ -94,7 +92,7 @@ class _HealthHandler(http.server.BaseHTTPRequestHandler):
 
 
 def _start_health_server(port: int = 8080) -> None:
-    server = http.server.HTTPServer(("0.0.0.0", port), _HealthHandler)
+    server = http.server.HTTPServer(("0.0.0.0", port), _HealthHandler)  # noqa: S104
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
     _stdlib_logger.info("health server listening on port %d", port)

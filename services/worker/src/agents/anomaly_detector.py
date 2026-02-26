@@ -10,14 +10,10 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from civicproof_common.anomalies.rules import (
-    AnomalyResult,
     detect_all_anomalies,
 )
-from civicproof_common.db.models import EntityModel, RawArtifactModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

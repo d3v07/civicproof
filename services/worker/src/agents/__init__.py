@@ -1,6 +1,6 @@
 """Multi-agent pipeline for CivicProof case investigation."""
 
-from .orchestrator import Orchestrator
 from .auditor import AuditorGate, AuditorResult
+from .orchestrator import Orchestrator
 
 __all__ = ["Orchestrator", "AuditorGate", "AuditorResult"]

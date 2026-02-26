@@ -11,15 +11,12 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from civicproof_common.db.models import (
     EntityMentionModel,
-    EntityModel,
-    RawArtifactModel,
     RelationshipModel,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +192,7 @@ class GraphBuilderAgent:
         self, entity_ids: list[str]
     ) -> dict[str, float]:
         """Compute degree centrality for entities."""
-        from sqlalchemy import or_, func
+        from sqlalchemy import func, or_
 
         centrality = {}
         for eid in entity_ids:

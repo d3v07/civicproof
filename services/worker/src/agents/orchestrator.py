@@ -19,18 +19,17 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from civicproof_common.db.models import (
     AuditEventModel,
     CaseModel,
     CasePackModel,
-    ClaimModel,
     CitationModel,
+    ClaimModel,
     RawArtifactModel,
 )
 from civicproof_common.schemas.cases import CaseStatus
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .anomaly_detector import AnomalyDetectorAgent
 from .auditor import AuditorGate, AuditorResult
@@ -402,7 +401,6 @@ class Orchestrator:
         audit_result: AuditorResult,
     ) -> None:
         """Persist approved case pack to DB."""
-        import json
 
         # Save claims
         for claim in pack.claims:

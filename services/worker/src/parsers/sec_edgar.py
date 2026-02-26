@@ -9,9 +9,7 @@ Extracts structured data from SEC filings metadata:
 
 from __future__ import annotations
 
-import re
 from typing import Any
-
 
 # Government contracting keywords for relevance scoring
 _GOV_CONTRACT_KEYWORDS = [
@@ -47,7 +45,7 @@ def parse_sec_filing(data: dict[str, Any]) -> dict[str, Any]:
         Normalized structure with filing details, entity info, and relevance.
     """
     entity_name = data.get("entity_name", "")
-    form_type = data.get("form_type", "")
+    data.get("form_type", "")
     description = data.get("description", "")
 
     # Determine government contracting relevance

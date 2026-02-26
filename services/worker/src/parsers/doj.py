@@ -13,7 +13,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 # Regex patterns
 _AMOUNT_PATTERN = re.compile(
     r"\$\s*([\d,]+(?:\.\d{1,2})?)\s*(million|billion|thousand)?",

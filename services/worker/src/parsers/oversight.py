@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 # Procurement fraud keywords for relevance scoring
 _PROCUREMENT_KEYWORDS = [
     "procurement fraud",

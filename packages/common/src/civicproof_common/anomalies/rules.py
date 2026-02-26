@@ -103,8 +103,8 @@ def detect_sole_source_concentration(
         score=worst_ratio,
         description=(
             f"Vendor has {worst_ratio:.0%} sole-source rate from {worst_agency} "
-            f"({agency_sole_source.get(worst_agency, 0)}/"
-            f"{agency_total.get(worst_agency, 0)} awards)"
+            f"({agency_sole_source.get(worst_agency, 0)}"
+            f"/{agency_total.get(worst_agency, 0)} awards)"
             if detected
             else "No sole-source concentration detected"
         ),
@@ -500,7 +500,7 @@ def _safe_float(value: Any) -> float:
 
 def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Compute haversine distance in miles between two lat/lon points."""
-    radius = 3959  # Earth radius in miles
+    earth_radius_miles = 3959
     lat1_r, lat2_r = math.radians(lat1), math.radians(lat2)
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -509,7 +509,7 @@ def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
         + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlon / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return radius * c
+    return earth_radius_miles * c
 
 
 # Approximate state centroid coordinates for distance estimation

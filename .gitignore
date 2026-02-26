@@ -105,7 +105,15 @@ docs/
 .ipynb_checkpoints/
 *.ipynb
 
+# Scripts with sensitive config — keep local only
+scripts/deploy_gcp.sh
+
+# Scratch files
+test_gemini.py
+
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+user_manual.pdf
+user_manual.md

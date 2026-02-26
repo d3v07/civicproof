@@ -14,16 +14,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DATABASE_URL: str = Field(
-        default="postgresql://civicproof:changeme@localhost:5432/civicproof"
+    DATABASE_URL: str | None = Field(
+        default=None,
+        description="Postgres connection string — MUST be set via env or .env file"
     )
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
 
     MINIO_ENDPOINT: str = Field(default="localhost:9000")
-    MINIO_ACCESS_KEY: str = Field(
+    MINIO_ACCESS_KEY: str | None = Field(
+        default=None,
         description="MinIO/S3 access key — MUST be set via env or .env file"
     )
-    MINIO_SECRET_KEY: str = Field(
+    MINIO_SECRET_KEY: str | None = Field(
+        default=None,
         description="MinIO/S3 secret key — MUST be set via env or .env file"
     )
     MINIO_BUCKET: str = Field(default="civicproof-artifacts")
@@ -32,7 +35,8 @@ class Settings(BaseSettings):
     OTEL_EXPORTER_OTLP_ENDPOINT: str | None = Field(default=None)
     LOG_LEVEL: str = Field(default="INFO")
 
-    API_SECRET_KEY: str = Field(
+    API_SECRET_KEY: str | None = Field(
+        default=None,
         description="API signing key — MUST be set via env or .env file"
     )
     API_RATE_LIMIT_PER_MINUTE: int = Field(default=60)
@@ -42,7 +46,9 @@ class Settings(BaseSettings):
     GCP_REGION: str = Field(default="us-central1")
 
     VERTEX_AI_LOCATION: str = Field(default="us-central1")
-    VERTEX_AI_MODEL: str = Field(default="gemini-1.5-pro")
+    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash")
+
+    GEMINI_API_KEY: str | None = Field(default=None)
 
     OPENROUTER_API_KEY: str | None = Field(default=None)
     OPENROUTER_DEFAULT_MODEL: str = Field(default="anthropic/claude-3-5-sonnet")

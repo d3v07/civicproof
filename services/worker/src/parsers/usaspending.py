@@ -108,11 +108,8 @@ def _extract_award_details(data: dict[str, Any]) -> dict[str, Any]:
 
 def _extract_place_of_performance(data: dict[str, Any]) -> dict[str, Any]:
     """Extract place of performance details."""
-    pop = (
-        data.get("place_of_performance", {})
-        if isinstance(data.get("place_of_performance"), dict)
-        else {}
-    )
+    raw_pop = data.get("place_of_performance")
+    pop = raw_pop if isinstance(raw_pop, dict) else {}
     return {
         "city": pop.get("city_name") or data.get("pop_city_code", ""),
         "state": pop.get("state_code") or data.get("pop_state_code", ""),

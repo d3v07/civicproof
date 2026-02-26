@@ -11,7 +11,7 @@ Provides graph traversal capabilities over the entity-relationship model:
 from __future__ import annotations
 
 import logging
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -195,7 +195,7 @@ class EvidenceGraph:
             center_entity_id=entity_ids[0] if entity_ids else "",
             depth=0,
         )
-        id_set = set(entity_ids)
+        set(entity_ids)
 
         for eid in entity_ids:
             node = await self._fetch_entity(eid)

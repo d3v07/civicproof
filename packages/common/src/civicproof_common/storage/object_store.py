@@ -75,6 +75,8 @@ class S3ObjectStore(ObjectStore):
 
 def build_object_store() -> S3ObjectStore:
     settings = get_settings()
+    if not settings.MINIO_ACCESS_KEY or not settings.MINIO_SECRET_KEY:
+        raise RuntimeError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set")
     endpoint = None
     if settings.MINIO_ENDPOINT:
         scheme = "https" if settings.MINIO_USE_SSL else "http"

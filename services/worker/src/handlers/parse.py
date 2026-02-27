@@ -32,7 +32,7 @@ def _extract_text(raw_bytes: bytes, doc_type: str) -> tuple[str, dict]:
         try:
             data = json.loads(decoded)
             structured = data if isinstance(data, dict) else {"items": data}
-            text_parts = []
+            text_parts: list[str] = []
             _flatten_json_to_text(data, text_parts)
             text = " ".join(text_parts)
         except json.JSONDecodeError:
@@ -123,7 +123,7 @@ async def handle_parse_requested(
         },
         idempotency_key=f"normalize:{artifact_id}",
     )
-    await redis_client.rpush(WORKER_QUEUE_KEY, normalize_event.model_dump_json())
+    await redis_client.rpush(WORKER_QUEUE_KEY, normalize_event.model_dump_json())  # type: ignore[misc]
 
     logger.info(
         "artifact_parsed",

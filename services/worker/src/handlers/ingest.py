@@ -105,7 +105,7 @@ async def handle_artifact_ingested(
         },
         idempotency_key=f"parse:{artifact_id}",
     )
-    await redis_client.rpush(WORKER_QUEUE_KEY, parse_event.model_dump_json())
+    await redis_client.rpush(WORKER_QUEUE_KEY, parse_event.model_dump_json())  # type: ignore[misc]
 
     logger.info(
         "artifact_stored",

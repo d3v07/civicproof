@@ -98,7 +98,7 @@ class EvidenceRetrievalAgent:
                 art.retrieved_at
                 and (
                     manifest.freshness[source] is None
-                    or art.retrieved_at > manifest.freshness[source]
+                    or art.retrieved_at > manifest.freshness[source]  # type: ignore[operator]
                 )
             ):
                 manifest.freshness[source] = art.retrieved_at
@@ -108,8 +108,8 @@ class EvidenceRetrievalAgent:
         for source in EXPECTED_SOURCES:
             if source not in manifest.artifacts_by_source:
                 manifest.missing_sources.append(source)
-            elif manifest.freshness.get(source):
-                age = now - manifest.freshness[source]
+            elif manifest.freshness.get(source) is not None:
+                age = now - manifest.freshness[source]  # type: ignore[operator]
                 if age > self._staleness:
                     manifest.stale_sources.append(source)
 

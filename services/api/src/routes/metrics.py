@@ -102,7 +102,7 @@ async def get_public_metrics(
     artifacts_24h_result = await db.execute(
         select(func.count())
         .select_from(RawArtifactModel)
-        .where(RawArtifactModel.fetched_at >= day_ago)
+        .where(RawArtifactModel.retrieved_at >= day_ago)
     )
     artifacts_24h = artifacts_24h_result.scalar() or 0
 

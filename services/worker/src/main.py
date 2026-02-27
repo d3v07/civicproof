@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import http.server
 import logging
 import signal
+import threading
 
 import redis.asyncio as aioredis
 from civicproof_common.config import get_settings
@@ -76,6 +78,26 @@ async def _process_message(redis_client: aioredis.Redis, raw: str) -> None:
             await redis_client.lpush(DEAD_LETTER_KEY, raw)
 
 
+class _HealthHandler(http.server.BaseHTTPRequestHandler):
+    """Minimal HTTP handler for Cloud Run health probes."""
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"status":"ok"}')
+
+    def log_message(self, format, *args):
+        pass  # suppress noisy access logs
+
+
+def _start_health_server(port: int = 8080) -> None:
+    server = http.server.HTTPServer(("0.0.0.0", port), _HealthHandler)  # noqa: S104
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    _stdlib_logger.info("health server listening on port %d", port)
+
+
 async def run_worker() -> None:
     settings = get_settings()
     setup_telemetry(
@@ -83,6 +105,9 @@ async def run_worker() -> None:
         otlp_endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
         log_level=settings.LOG_LEVEL,
     )
+
+    # Start health endpoint for Cloud Run startup probe
+    _start_health_server(int(settings.PORT if hasattr(settings, "PORT") else 8080))
 
     redis_client = aioredis.from_url(
         settings.REDIS_URL, encoding="utf-8", decode_responses=True
@@ -112,3 +137,4 @@ async def run_worker() -> None:
 
 if __name__ == "__main__":
     asyncio.run(run_worker())
+

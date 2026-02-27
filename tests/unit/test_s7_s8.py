@@ -8,6 +8,8 @@ All tests are deterministic — no network calls, no LLM.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from datetime import UTC, datetime
 
 import pytest
@@ -281,10 +283,8 @@ class TestTerraformCompliance:
 
     @pytest.fixture
     def tf_content(self):
-        with open(
-            "/Users/dev/Documents/PROJECT_LOWLEVEL/SYSTEM DESIGN PROJECTS/"
-            "CivicProof/infra/terraform/main.tf"
-        ) as f:
+        tf_path = Path(__file__).parent.parent.parent / "infra" / "terraform" / "main.tf"
+        with open(tf_path) as f:
             return f.read()
 
     def test_min_instances_zero(self, tf_content):

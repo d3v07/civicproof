@@ -86,7 +86,9 @@ def _extract_award_details(data: dict[str, Any]) -> dict[str, Any]:
         "award_id": data.get("award_id") or data.get("Award ID", ""),
         "generated_internal_id": data.get("generated_internal_id", ""),
         "award_amount": _safe_float(data.get("award_amount") or data.get("Award Amount")),
-        "total_outlays": _safe_float(data.get("total_outlays") or data.get("Total Outlays")),
+        "total_outlays": _safe_float(
+            data.get("total_outlays") or data.get("Total Outlays")
+        ),
         "award_type": data.get("award_type") or data.get("Award Type", ""),
         "contract_award_type": (
             data.get("contract_award_type") or data.get("Contract Award Type", "")

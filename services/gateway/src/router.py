@@ -6,10 +6,10 @@ from typing import Any
 
 from civicproof_common.config import get_settings
 
+from .providers.gemini_free import GeminiFreeProvider
 from .providers.openrouter import OpenRouterProvider
 from .providers.vertex import VertexAIProvider
 from .providers.vllm_local import VLLMLocalProvider
-from .providers.gemini_free import GeminiFreeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,8 @@ class ModelRouter:
         except Exception as exc:
             logger.warning("primary provider %s failed: %s, trying fallback", provider_name, exc)
 
-        fallback_order = [p for p in ["gemini_free", "openrouter", "vllm", "vertex"] if p != provider_name]
+        all_providers = ["gemini_free", "openrouter", "vllm", "vertex"]
+        fallback_order = [p for p in all_providers if p != provider_name]
         for fallback_name in fallback_order:
             provider = provider_map[fallback_name]
             try:

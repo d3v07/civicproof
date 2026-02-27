@@ -8,9 +8,8 @@ All tests are deterministic — no network calls, no LLM.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 

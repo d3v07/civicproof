@@ -15,7 +15,7 @@ class GeminiFreeProvider:
         self._settings = get_settings()
         if not self._settings.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY is not set")
-            
+
         self.model = self._settings.VERTEX_AI_MODEL
         self.client = genai.Client(api_key=self._settings.GEMINI_API_KEY)
 
@@ -27,7 +27,7 @@ class GeminiFreeProvider:
         temperature: float = 0.2,
         case_id: str | None = None,
     ) -> dict[str, Any]:
-    
+
         config = genai.types.GenerateContentConfig(
             temperature=temperature,
             max_output_tokens=max_tokens,
@@ -42,7 +42,7 @@ class GeminiFreeProvider:
         )
 
         text = response.text or ""
-        
+
         usage = {}
         if response.usage_metadata:
             usage = {
@@ -63,12 +63,12 @@ class GeminiFreeProvider:
             model="text-embedding-004",
             contents=text[:8000],
         )
-        
+
         # result.embeddings is a list of Embedding objects. Get the first one's values.
         embedding_values = []
         if result.embeddings and len(result.embeddings) > 0:
             embedding_values = result.embeddings[0].values
-            
+
         return {
             "embedding": embedding_values,
             "provider": "gemini_free",

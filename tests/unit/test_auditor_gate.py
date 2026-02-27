@@ -5,9 +5,7 @@ Every test verifies the same-input-same-output invariant.
 """
 
 import pytest
-
-from agents.auditor import AuditorGate, AuditorResult
-
+from agents.auditor import AuditorGate
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

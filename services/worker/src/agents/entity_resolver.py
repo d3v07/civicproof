@@ -16,10 +16,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from civicproof_common.db.models import EntityModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from civicproof_common.db.models import EntityModel
 
 logger = logging.getLogger(__name__)
 

@@ -95,7 +95,7 @@ class RateLimiter:
         """
         limit = self._get_limit(source)
         wait_seconds = 1.0 / limit.tokens_per_second
-        for attempt in range(max_retries):
+        for _attempt in range(max_retries):
             if await self.acquire(source):
                 return
             await asyncio.sleep(min(wait_seconds, 1.0))

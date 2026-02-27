@@ -88,9 +88,13 @@ def _extract_award_details(data: dict[str, Any]) -> dict[str, Any]:
         "award_amount": _safe_float(data.get("award_amount") or data.get("Award Amount")),
         "total_outlays": _safe_float(data.get("total_outlays") or data.get("Total Outlays")),
         "award_type": data.get("award_type") or data.get("Award Type", ""),
-        "contract_award_type": data.get("contract_award_type") or data.get("Contract Award Type", ""),
+        "contract_award_type": (
+            data.get("contract_award_type") or data.get("Contract Award Type", "")
+        ),
         "awarding_agency": data.get("awarding_agency") or data.get("Awarding Agency", ""),
-        "awarding_sub_agency": data.get("awarding_sub_agency") or data.get("Awarding Sub Agency", ""),
+        "awarding_sub_agency": (
+            data.get("awarding_sub_agency") or data.get("Awarding Sub Agency", "")
+        ),
         "funding_agency": data.get("funding_agency", ""),
         "start_date": data.get("start_date") or data.get("Start Date", ""),
         "end_date": data.get("end_date") or data.get("End Date", ""),
@@ -102,7 +106,8 @@ def _extract_award_details(data: dict[str, Any]) -> dict[str, Any]:
 
 def _extract_place_of_performance(data: dict[str, Any]) -> dict[str, Any]:
     """Extract place of performance details."""
-    pop = data.get("place_of_performance", {}) if isinstance(data.get("place_of_performance"), dict) else {}
+    raw_pop = data.get("place_of_performance")
+    pop = raw_pop if isinstance(raw_pop, dict) else {}
     return {
         "city": pop.get("city_name") or data.get("pop_city_code", ""),
         "state": pop.get("state_code") or data.get("pop_state_code", ""),

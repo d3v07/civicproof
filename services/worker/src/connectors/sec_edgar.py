@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from .base import BaseConnector, FetchParams, FetchResult, USER_AGENT
+from .base import BaseConnector, FetchParams, FetchResult
 
 logger = logging.getLogger(__name__)
 

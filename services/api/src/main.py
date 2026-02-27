@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.telemetry import TelemetryMiddleware
-from .routes import cases, health, ingest, search
+from .routes import cases, health, ingest, metrics, search
 
 _redis_pool: aioredis.Redis | None = None
 
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(cases.router, prefix="/v1", tags=["cases"])
     app.include_router(search.router, prefix="/v1", tags=["search"])
     app.include_router(ingest.router, prefix="/v1", tags=["ingest"])
+    app.include_router(metrics.router, prefix="/v1", tags=["metrics"])
 
     return app
 

@@ -117,7 +117,7 @@ jobs:
       - name: Build ${{ matrix.service }} image
         run: |
           if [ -f services/${{ matrix.service }}/Dockerfile ]; then
-            docker build services/${{ matrix.service }} -t civicproof-${{ matrix.service }}:test
+            docker build -f services/${{ matrix.service }}/Dockerfile . -t civicproof-${{ matrix.service }}:test
           else
             echo "Dockerfile for ${{ matrix.service }} not yet created — skipping"
           fi

@@ -20,7 +20,7 @@ target_metadata = Base.metadata
 
 
 def _get_url() -> str:
-    raw = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url", ""))
+    raw = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url", "")
     if raw.startswith("postgresql://"):
         raw = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
     elif raw.startswith("postgres://"):

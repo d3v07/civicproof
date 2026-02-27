@@ -124,7 +124,7 @@ def _extract_amounts(text: str) -> list[dict[str, Any]]:
     # Deduplicate and sort by value descending
     seen = set()
     unique_amounts = []
-    for a in sorted(amounts, key=lambda x: x["value_usd"], reverse=True):
+    for a in sorted(amounts, key=lambda x: float(x["value_usd"]), reverse=True):  # type: ignore[arg-type]
         if a["value_usd"] not in seen:
             seen.add(a["value_usd"])
             unique_amounts.append(a)

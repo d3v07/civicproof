@@ -138,7 +138,10 @@ class GraphBuilderAgent:
             for m2 in resolved[i + 1 :]:
                 if m1.resolved_entity_id == m2.resolved_entity_id:
                     continue
-                pair_key = tuple(sorted([m1.resolved_entity_id, m2.resolved_entity_id]))
+                pair_key = tuple(sorted([
+                    m1.resolved_entity_id or "",
+                    m2.resolved_entity_id or "",
+                ]))
                 if pair_key not in seen:
                     seen.add(pair_key)
                     context = f"{m1.raw_text} <-> {m2.raw_text}"

@@ -238,7 +238,7 @@ class CaseComposerAgent:
         self, case_id: str, awards_data: list[dict[str, Any]], artifact_ids: list[str]
     ) -> list[ComposedClaim]:
         """Create factual claims from award data."""
-        claims = []
+        claims: list[ComposedClaim] = []
 
         if not awards_data:
             return claims

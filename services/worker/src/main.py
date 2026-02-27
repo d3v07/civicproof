@@ -36,7 +36,7 @@ async def _process_message(redis_client: aioredis.Redis, raw: str) -> None:
         envelope = EventEnvelope.model_validate_json(raw)
     except Exception as exc:
         _stdlib_logger.error("failed to parse event envelope: %s | raw=%s", exc, raw[:200])
-        await redis_client.lpush(DEAD_LETTER_KEY, raw)
+        await redis_client.lpush(DEAD_LETTER_KEY, raw)  # type: ignore[misc]
         return
 
     handler = _HANDLERS.get(envelope.event_type)
@@ -73,9 +73,9 @@ async def _process_message(redis_client: aioredis.Redis, raw: str) -> None:
                 payload=retry_payload,
                 idempotency_key=f"{envelope.idempotency_key}:retry:{retry_count}",
             )
-            await redis_client.rpush(QUEUE_KEY, retry_envelope.model_dump_json())
+            await redis_client.rpush(QUEUE_KEY, retry_envelope.model_dump_json())  # type: ignore[misc]
         else:
-            await redis_client.lpush(DEAD_LETTER_KEY, raw)
+            await redis_client.lpush(DEAD_LETTER_KEY, raw)  # type: ignore[misc]
 
 
 class _HealthHandler(http.server.BaseHTTPRequestHandler):
@@ -125,7 +125,7 @@ async def run_worker() -> None:
 
     try:
         while not stop_event.is_set():
-            result = await redis_client.blpop(QUEUE_KEY, timeout=POLL_TIMEOUT)
+            result = await redis_client.blpop([QUEUE_KEY], timeout=POLL_TIMEOUT)  # type: ignore[misc]
             if result is None:
                 continue
             _, raw = result

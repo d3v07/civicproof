@@ -147,7 +147,11 @@ class TestRapidAwarding:
 class TestSharedAddressRing:
     def test_ring_detected(self):
         entities = [
-            {"entity_id": f"e{i}", "canonical_name": f"Vendor {i}", "address": "123 Main St, VA"}
+            {
+                "entity_id": f"e{i}",
+                "canonical_name": f"Vendor {i}",
+                "address": "123 Main St, Suite 100, Anytown, VA",
+            }
             for i in range(4)
         ]
         results = detect_shared_address_ring(entities, min_entities=3)

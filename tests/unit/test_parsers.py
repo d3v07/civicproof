@@ -67,7 +67,10 @@ class TestDOJParser:
     def test_amount_extraction(self):
         data = {
             "title": "Company Agrees to Pay $2.5 Million",
-            "body": "The company agreed to pay $2.5 million to resolve FCA allegations.",
+            "body": (
+                "The company agreed to pay $2.5 million to resolve "
+                "False Claims Act allegations."
+            ),
         }
         result = parse_doj_press_release(data)
         assert len(result["settlement_amounts"]) >= 1

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Database, RefreshCw, CheckCircle2, Clock, Zap } from 'lucide-react';
-import { mockSources } from '../lib/mock-data';
+import { useState, useEffect } from 'react';
+import { Database, RefreshCw } from 'lucide-react';
+import { mockSources, mockMetrics } from '../lib/mock-data';
 import * as api from '../lib/api';
 import { useToast } from '../components/ToastProvider';
 
@@ -31,26 +31,26 @@ function SourceCard({ source }) {
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{source.name}</div>
           <span className="badge badge-active">{source.status}</span>
         </div>
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--color-accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Database size={16} style={{ color: 'var(--color-accent)' }} />
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Database size={16} style={{ color: 'var(--accent)' }} />
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
         <div>
-          <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Rate Limit</div>
+          <div style={{ color: 'var(--text-3)', marginBottom: 2 }}>Rate Limit</div>
           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{source.rate_limit}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Schedule</div>
+          <div style={{ color: 'var(--text-3)', marginBottom: 2 }}>Schedule</div>
           <div style={{ fontWeight: 600 }}>{source.schedule}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Artifacts</div>
+          <div style={{ color: 'var(--text-3)', marginBottom: 2 }}>Artifacts</div>
           <div style={{ fontWeight: 600 }}>{source.artifacts_total.toLocaleString()}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Last Sync</div>
+          <div style={{ color: 'var(--text-3)', marginBottom: 2 }}>Last Sync</div>
           <div style={{ fontWeight: 600 }}>{hoursAgo}h ago</div>
         </div>
       </div>
@@ -69,12 +69,23 @@ function SourceCard({ source }) {
 }
 
 export default function SourcesPage() {
+  const [metrics, setMetrics] = useState(null);
+
+  useEffect(() => {
+    api.getMetrics()
+      .then(setMetrics)
+      .catch(() => setMetrics(mockMetrics));
+  }, []);
+
+  const totalArtifacts = metrics?.total_artifacts_ingested ?? mockSources.reduce((s, x) => s + x.artifacts_total, 0);
+  const sourcesActive = metrics?.sources_active ?? mockSources.length;
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Data Sources</h1>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-          {mockSources.length} federal data connectors — rate-limited, idempotent, content-hashed
+        <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          {sourcesActive} federal data connectors — {totalArtifacts.toLocaleString()} artifacts ingested
         </p>
       </div>
 
@@ -83,7 +94,7 @@ export default function SourcesPage() {
       </div>
 
       <div className="card">
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12 }}>Rate Limit Compliance</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 12 }}>Rate Limit Compliance</div>
         <table className="data-table">
           <thead>
             <tr>
@@ -97,7 +108,7 @@ export default function SourcesPage() {
           <tbody>
             {mockSources.map((s) => (
               <tr key={s.source_id}>
-                <td style={{ fontWeight: 600, color: 'var(--color-text)' }}>{s.name}</td>
+                <td style={{ fontWeight: 600, color: 'var(--text)' }}>{s.name}</td>
                 <td style={{ fontFamily: 'var(--font-mono)' }}>{s.rate_limit}</td>
                 <td>
                   {['sam_gov', 'openfec'].includes(s.source_id)

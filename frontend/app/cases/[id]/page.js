@@ -23,13 +23,13 @@ const STAGE_META = {
 
 function ConfidenceBar({ value }) {
   const pct = Math.round(value * 100);
-  const color = value >= 0.8 ? 'var(--color-success)' : value >= 0.5 ? 'var(--color-warning)' : 'var(--color-error)';
+  const color = value >= 0.8 ? 'var(--green)' : value >= 0.5 ? 'var(--amber)' : 'var(--red)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 100 }}>
-      <div style={{ flex: 1, height: 4, background: 'var(--color-surface-3)', borderRadius: 2 }}>
+      <div style={{ flex: 1, height: 4, background: 'var(--bg-hover)', borderRadius: 2 }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2, transition: 'width 300ms' }} />
       </div>
-      <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)', minWidth: 32 }}>{pct}%</span>
+      <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-2)', minWidth: 32 }}>{pct}%</span>
     </div>
   );
 }
@@ -45,29 +45,29 @@ function ClaimCard({ claim, citations, isOpen, onToggle }) {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span className={`badge ${typeClass}`}>{claim.claim_type.replace('_', ' ')}</span>
-              {claim.audit_passed && <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} />}
-              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{claim.claim_id}</span>
+              {claim.audit_passed && <CheckCircle2 size={13} style={{ color: 'var(--green)' }} />}
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-3)' }}>{claim.claim_id}</span>
               <span style={{ marginLeft: 'auto' }}>
-                {isOpen ? <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />}
+                {isOpen ? <ChevronDown size={14} style={{ color: 'var(--text-3)' }} /> : <ChevronRight size={14} style={{ color: 'var(--text-3)' }} />}
               </span>
             </div>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>{claim.statement}</p>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, margin: 0 }}>{claim.statement}</p>
           </div>
           <ConfidenceBar value={claim.confidence} />
         </div>
       </div>
 
       {isOpen && claimCits.length > 0 && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
             Citations ({claimCits.length})
           </div>
           {claimCits.map((cit) => (
-            <div key={cit.citation_id} style={{ padding: '8px 12px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 6, marginBottom: 6, fontSize: 13 }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-accent)', marginBottom: 4 }}>
+            <div key={cit.citation_id} style={{ padding: '8px 12px', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 6, fontSize: 13 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)', marginBottom: 4 }}>
                 {cit.artifact_id}
               </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>&ldquo;{cit.excerpt}&rdquo;</div>
+              <div style={{ color: 'var(--text-2)', fontStyle: 'italic' }}>&ldquo;{cit.excerpt}&rdquo;</div>
             </div>
           ))}
         </div>
@@ -101,7 +101,7 @@ export default function CaseDetailPage() {
 
   if (!caseData || !pack) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading case...</div>
+      <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading case...</div>
     );
   }
 
@@ -129,7 +129,7 @@ export default function CaseDetailPage() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <Link href="/cases" style={{ fontSize: 12, color: 'var(--color-text-muted)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
+        <Link href="/cases" style={{ fontSize: 12, color: 'var(--text-3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
           <ArrowLeft size={12} /> Back to Cases
         </Link>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -137,8 +137,8 @@ export default function CaseDetailPage() {
             <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{caseData.title}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className={`badge badge-${caseData.status}`}>{caseData.status}</span>
-              <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{caseData.case_id}</span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-3)' }}>{caseData.case_id}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
                 {new Date(caseData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
@@ -158,7 +158,7 @@ export default function CaseDetailPage() {
           return (
             <div key={event.audit_event_id} style={{ display: 'contents' }}>
               {i > 0 && <div className="pipeline-connector" />}
-              <div className={`pipeline-step done`} style={{ borderColor: passed ? meta.color + '33' : 'var(--color-error-muted)', background: passed ? meta.color + '15' : 'var(--color-error-muted)', color: passed ? meta.color : 'var(--color-error)' }}>
+              <div className={`pipeline-step done`} style={{ borderColor: passed ? meta.color + '33' : 'var(--red-glow)', background: passed ? meta.color + '15' : 'var(--red-glow)', color: passed ? meta.color : 'var(--red)' }}>
                 {passed ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
                 {event.stage.replace(/_/g, ' ')}
               </div>
@@ -171,19 +171,19 @@ export default function CaseDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
         <div className="card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 24, fontWeight: 700 }}>{pack.claims.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Claims</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Claims</div>
         </div>
         <div className="card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 24, fontWeight: 700 }}>{pack.citations.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Citations</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Citations</div>
         </div>
         <div className="card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 24, fontWeight: 700 }}>{pack.audit_events.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Pipeline Steps</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Pipeline Steps</div>
         </div>
         <div className="card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: 14, wordBreak: 'break-all' }}>{pack.pack_hash?.slice(0, 16)}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Pack Hash</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Pack Hash</div>
         </div>
       </div>
 
@@ -224,20 +224,20 @@ export default function CaseDetailPage() {
           {pack.audit_events.map((event, i) => {
             const meta = STAGE_META[event.stage] || { agent: 'System', color: '#71717a' };
             return (
-              <div key={event.audit_event_id} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderBottom: i < pack.audit_events.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+              <div key={event.audit_event_id} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderBottom: i < pack.audit_events.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div className="agent-avatar" style={{ width: 28, height: 28, backgroundColor: meta.color, fontSize: 10 }}>
                   {meta.agent.split(' ').map(w => w[0]).join('')}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{meta.agent}</span>
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{event.stage.replace(/_/g, ' ')}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{event.stage.replace(/_/g, ' ')}</span>
                     <span className={`badge badge-${event.policy_decision}`}>{event.policy_decision}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-3)' }}>
                       {new Date(event.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{event.detail}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{event.detail}</div>
                 </div>
               </div>
             );
@@ -246,10 +246,10 @@ export default function CaseDetailPage() {
       )}
 
       {/* Disclaimer */}
-      <div style={{ marginTop: 24, padding: '12px 16px', borderRadius: 8, background: 'var(--color-warning-muted)', border: '1px solid rgba(245,158,11,0.2)' }}>
+      <div style={{ marginTop: 24, padding: '12px 16px', borderRadius: 8, background: 'var(--amber-glow)', border: '1px solid rgba(245,158,11,0.2)' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <AlertTriangle size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 12, color: 'var(--color-warning)', lineHeight: 1.5 }}>
+          <AlertTriangle size={14} style={{ color: 'var(--amber)', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 12, color: 'var(--amber)', lineHeight: 1.5 }}>
             This document contains risk signals and hypotheses from publicly available data. It does not constitute an accusation of wrongdoing. All findings require independent corroboration.
           </div>
         </div>

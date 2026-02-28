@@ -17,7 +17,7 @@ from civicproof_common.schemas.cases import CaseStatus
 from civicproof_common.telemetry import StructuredLogger
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,6 +42,13 @@ class CaseResponse(BaseModel):
     updated_at: datetime
 
 
+class CaseListResponse(BaseModel):
+    items: list[CaseResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 class CasePackResponse(BaseModel):
     case_id: str
     claims: list[dict]
@@ -59,6 +66,31 @@ def _row_to_case_response(row: CaseModel) -> CaseResponse:
         seed_input=row.seed_input,
         created_at=row.created_at,
         updated_at=row.updated_at,
+    )
+
+
+@router.get("/cases", response_model=CaseListResponse)
+async def list_cases(
+    page: int = 1,
+    page_size: int = 50,
+    status: str | None = None,
+    db: AsyncSession = Depends(get_session),
+) -> CaseListResponse:
+    count_q = select(func.count()).select_from(CaseModel)
+    rows_q = select(CaseModel).order_by(CaseModel.created_at.desc())
+    if status:
+        count_q = count_q.where(CaseModel.status == status)
+        rows_q = rows_q.where(CaseModel.status == status)
+
+    total = (await db.execute(count_q)).scalar() or 0
+    offset = (page - 1) * page_size
+    rows = (await db.execute(rows_q.offset(offset).limit(page_size))).scalars().all()
+
+    return CaseListResponse(
+        items=[_row_to_case_response(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
     )
 
 

@@ -3,15 +3,22 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Filter } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { mockCases } from '../lib/mock-data';
+import * as api from '../lib/api';
 
 export default function CasesPage() {
   const [filter, setFilter] = useState('all');
   const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => { setCases(mockCases); }, []);
+  useEffect(() => {
+    api.listCases()
+      .then((data) => setCases(data.items || data))
+      .catch(() => setCases(mockCases))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = filter === 'all' ? cases : cases.filter((c) => c.status === filter);
 
@@ -27,7 +34,7 @@ export default function CasesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Cases</h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
             {cases.length} investigation{cases.length !== 1 ? 's' : ''} total
           </p>
         </div>
@@ -48,8 +55,12 @@ export default function CasesPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--color-text-muted)' }}>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
+          <div style={{ fontSize: 13 }}>Loading...</div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
           <div style={{ fontSize: 15, marginBottom: 8 }}>No {filter === 'all' ? '' : filter + ' '}cases found</div>
         </div>
       ) : (
@@ -72,8 +83,8 @@ export default function CasesPage() {
                   onClick={() => router.push(`/cases/${c.case_id}`)}
                 >
                   <td>
-                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{c.title}</div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', marginTop: 2 }}>{c.case_id}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{c.title}</div>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-3)', marginTop: 2 }}>{c.case_id}</div>
                   </td>
                   <td><span className={`badge badge-${c.status}`}>{c.status}</span></td>
                   <td style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>

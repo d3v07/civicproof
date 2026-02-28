@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ArrowRight, Clock, Shield, Zap } from 'lucide-react';
+import { Search, ArrowRight, Clock, Shield, Zap, Database } from 'lucide-react';
 import { mockCases } from './lib/mock-data';
 import * as api from './lib/api';
 
@@ -13,15 +13,9 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await api.searchEntities('', null, 1, 5);
-        if (data?.items) setCases(data.items);
-      } catch {
-        setCases(mockCases);
-      }
-    }
-    load();
+    api.listCases(1, 5)
+      .then((data) => setCases(data.items || data))
+      .catch(() => setCases(mockCases));
   }, []);
 
   const handleSearch = (e) => {
@@ -31,25 +25,31 @@ export default function HomePage() {
     }
   };
 
-  const suggestions = ['Acme Defense Solutions', 'GLBTCH1234', 'SPE4A121D0042'];
+  const suggestions = ['Acme Defense Solutions', 'GLBTCH1234', 'SPE4A121D0042', 'Meridian Logistics'];
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', paddingTop: 80 }}>
-      <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 8 }}>
-        Research public spending data
-      </h1>
-      <p style={{ fontSize: 15, color: 'var(--color-text-secondary)', marginBottom: 32, lineHeight: 1.6 }}>
-        Enter a company name, UEI, CAGE code, or award ID. CivicProof will search
-        6 federal data sources, map entity relationships, and surface risk signals.
-      </p>
+    <div style={{ maxWidth: 680, margin: '0 auto', paddingTop: 80 }}>
+      {/* Hero */}
+      <div style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, marginBottom: 12 }}>
+          Trace federal spending.
+          <br />
+          <span style={{ color: 'var(--accent-2)' }}>Surface what matters.</span>
+        </h1>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 520 }}>
+          Search 6 federal data sources. AI agents resolve entities, build evidence
+          graphs, and surface risk signals — every claim cited, every step audited.
+        </p>
+      </div>
 
-      <form onSubmit={handleSearch}>
-        <div className="search-wrap" style={{ marginBottom: 12 }}>
-          <span className="search-icon"><Search size={16} /></span>
+      {/* Search */}
+      <form onSubmit={handleSearch} style={{ marginBottom: 12 }}>
+        <div className="search-wrap">
+          <span className="search-icon"><Search size={17} /></span>
           <input
             className="search-input"
-            style={{ padding: '14px 14px 14px 40px', fontSize: 15, borderRadius: 10 }}
-            placeholder="Search vendor, UEI, CAGE, or award ID..."
+            style={{ padding: '14px 14px 14px 44px', fontSize: 15 }}
+            placeholder="Company name, UEI, CAGE code, or award ID..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -57,67 +57,74 @@ export default function HomePage() {
         </div>
       </form>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 48, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 0' }}>Try:</span>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 56, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', padding: '4px 0' }}>Try:</span>
         {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => { setQuery(s); }}
-            className="btn-ghost btn-sm"
-            style={{ borderRadius: 20, fontSize: 12, padding: '4px 12px', cursor: 'pointer', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+            style={{
+              padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              color: 'var(--text-2)', transition: 'all 100ms',
+            }}
+            onMouseEnter={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.color = 'var(--accent-2)'; }}
+            onMouseLeave={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-2)'; }}
           >
             {s}
           </button>
         ))}
       </div>
 
-      {/* How it works - subtle, not a dashboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 48 }}>
+      {/* How it works */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 48 }}>
         {[
-          { icon: Search, title: 'Search', desc: '6 federal data sources queried in parallel' },
-          { icon: Zap, title: 'Analyze', desc: 'AI agents resolve entities, build evidence graphs' },
-          { icon: Shield, title: 'Audit', desc: 'Every claim cited, every step logged' },
-        ].map((step) => (
-          <div key={step.title} style={{ padding: 16, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-            <step.icon size={18} style={{ color: 'var(--color-accent)', marginBottom: 10 }} strokeWidth={1.8} />
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{step.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{step.desc}</div>
+          { icon: Database, label: 'Search', sub: '6 sources queried' },
+          { icon: Zap, label: 'Analyze', sub: '6 AI agents' },
+          { icon: Shield, label: 'Audit', sub: 'Every claim cited' },
+        ].map((s) => (
+          <div key={s.label} style={{
+            padding: '16px', borderRadius: 10,
+            border: '1px solid var(--border)', background: 'var(--bg-card)',
+            textAlign: 'center',
+          }}>
+            <s.icon size={20} style={{ color: 'var(--accent)', marginBottom: 8 }} strokeWidth={1.5} />
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{s.label}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Recent cases */}
+      {/* Recent */}
       {cases.length > 0 && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              <Clock size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-              Recent Investigations
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={13} /> Recent
             </h2>
-            <Link href="/cases" style={{ fontSize: 12, color: 'var(--color-accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-              View all <ArrowRight size={12} />
+            <Link href="/cases" style={{ fontSize: 12, color: 'var(--accent-2)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+              All cases <ArrowRight size={11} />
             </Link>
           </div>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {cases.slice(0, 5).map((c, i) => (
               <Link
-                key={c.case_id || i}
+                key={c.case_id}
                 href={`/cases/${c.case_id}`}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 16px', borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none',
+                  padding: '11px 14px',
+                  borderBottom: i < Math.min(cases.length, 5) - 1 ? '1px solid var(--border)' : 'none',
                   textDecoration: 'none', color: 'inherit', transition: 'background 80ms',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{c.title || c.canonical_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {c.case_id || c.entity_id}
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{c.case_id}</div>
                 </div>
-                <span className={`badge badge-${c.status || 'active'}`}>{c.status || c.entity_type}</span>
+                <span className={`badge badge-${c.status}`}>{c.status}</span>
               </Link>
             ))}
           </div>

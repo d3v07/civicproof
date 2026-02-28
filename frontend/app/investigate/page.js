@@ -3,9 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Plus, ArrowRight, Building2, User, Landmark } from 'lucide-react';
-import { mockEntities, mockCases } from '../lib/mock-data';
+import { mockEntities } from '../lib/mock-data';
 import * as api from '../lib/api';
 import { useToast } from '../components/ToastProvider';
+import LiveInvestigation from '../components/LiveInvestigation';
 
 const TYPE_ICONS = { vendor: Building2, agency: Landmark, person: User };
 
@@ -17,24 +18,20 @@ function NewCaseModal({ onClose, onLaunch }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !seedValue.trim()) { setError('Title and seed value required.'); return; }
-    try {
-      await api.createCase(title, seedValue);
-    } catch { /* fallback mock */ }
-    if (onLaunch) onLaunch(title, seedValue);
+    if (!title.trim() || !seedValue.trim()) { setError('Title and seed value are required.'); return; }
+    try { await api.createCase(title, seedValue); } catch { /* mock fallback */ }
+    onLaunch(title, seedValue);
     onClose();
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Start Research</h2>
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
-          Provide a seed identifier. The system will search 6 federal data sources, resolve entities, and generate a cited dossier.
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Start Research</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20, lineHeight: 1.5 }}>
+          Provide a seed identifier. 6 agents will search federal data sources and compose a cited dossier.
         </p>
-
-        {error && <div style={{ padding: '8px 12px', borderRadius: 6, background: 'var(--color-error-muted)', color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
-
+        {error && <div style={{ padding: '8px 12px', borderRadius: 6, background: 'var(--red-glow)', color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 14 }}>
             <label className="form-label">Reference Title</label>
@@ -70,11 +67,10 @@ function InvestigateContent() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [liveSession, setLiveSession] = useState(null);
   const { addToast } = useToast();
 
-  useEffect(() => {
-    if (initialQ) doSearch(initialQ);
-  }, [initialQ]);
+  useEffect(() => { if (initialQ) doSearch(initialQ); }, [initialQ]);
 
   async function doSearch(q) {
     setLoading(true);
@@ -96,16 +92,28 @@ function InvestigateContent() {
     else setResults(mockEntities.items);
   };
 
-  const handleLaunch = (title, seed) => {
-    addToast({ message: `Research initiated: ${title}`, type: 'success' });
+  const handleLaunch = (title, seedValue) => {
+    setLiveSession({ title, seedValue });
+    addToast({ message: `Research launched: ${title}`, type: 'success' });
   };
+
+  // Show live investigation view
+  if (liveSession) {
+    return (
+      <LiveInvestigation
+        title={liveSession.title}
+        seedValue={liveSession.seedValue}
+        onComplete={() => setLiveSession(null)}
+      />
+    );
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Investigate</h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Search entity records or launch a new research query</p>
+          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Search entity records or launch a new research query</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={14} /> New Research
@@ -119,36 +127,37 @@ function InvestigateContent() {
         </div>
       </form>
 
-      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Searching...</div>}
+      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>Searching...</div>}
 
       {!loading && results.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>
             {results.length} result{results.length !== 1 ? 's' : ''}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {results.map((entity) => {
               const Icon = TYPE_ICONS[entity.entity_type] || Building2;
               return (
                 <div key={entity.entity_id} className="card" style={{ padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon size={16} style={{ color: 'var(--color-text-muted)' }} />
+                    <div style={{ width: 34, height: 34, borderRadius: 7, background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon size={15} style={{ color: 'var(--text-3)' }} />
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{entity.canonical_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
                         {entity.uei && `UEI: ${entity.uei}`}
                         {entity.uei && entity.cage_code && ' · '}
                         {entity.cage_code && `CAGE: ${entity.cage_code}`}
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className={`badge badge-${entity.entity_type === 'vendor' ? 'finding' : 'hypothesis'}`}>
-                      {entity.entity_type}
-                    </span>
-                    <button className="btn btn-ghost btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className={`badge badge-${entity.entity_type === 'vendor' ? 'finding' : 'hypothesis'}`}>{entity.entity_type}</span>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleLaunch(`${entity.canonical_name} — Investigation`, entity.canonical_name)}
+                    >
                       Investigate <ArrowRight size={12} />
                     </button>
                   </div>
@@ -160,9 +169,9 @@ function InvestigateContent() {
       )}
 
       {!loading && results.length === 0 && query && (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 15, marginBottom: 8 }}>No entities found for &ldquo;{query}&rdquo;</div>
-          <div style={{ fontSize: 13 }}>Try a different search term or launch a new research query</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
+          <div style={{ fontSize: 15, marginBottom: 8 }}>No results for &ldquo;{query}&rdquo;</div>
+          <div style={{ fontSize: 13 }}>Try a different term or <button onClick={() => setShowModal(true)} style={{ color: 'var(--accent-2)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>launch a new research query</button></div>
         </div>
       )}
 
@@ -173,7 +182,7 @@ function InvestigateContent() {
 
 export default function InvestigatePage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, color: 'var(--color-text-muted)' }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-3)' }}>Loading...</div>}>
       <InvestigateContent />
     </Suspense>
   );

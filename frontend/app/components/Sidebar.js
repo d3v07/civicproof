@@ -47,7 +47,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}>
           <span className="status-dot online" />
           All systems operational
         </div>

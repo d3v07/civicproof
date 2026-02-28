@@ -3,33 +3,32 @@ import Sidebar from './components/Sidebar';
 import { ToastProvider } from './components/ToastProvider';
 
 export const metadata = {
-  title: 'CivicProof — Public Spending Research Tool',
-  description: 'Open-source research tool for analyzing public federal spending data. Not a government website.',
-  keywords: 'public data analysis, federal spending research, open source, procurement analytics',
+  title: 'CivicProof',
+  description: 'Public spending research tool — trace federal contracts, map entity networks, surface risk signals.',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <a href="#main-content" className="skip-nav">Skip to main content</a>
-        {/* Non-government disclaimer banner */}
-        <div className="disclaimer-banner" role="banner">
-          <span>This is NOT a government website. CivicProof is an independent open-source research tool that analyzes publicly available federal data.</span>
+        <div className="disclaimer-bar">
+          Independent open-source research tool. Not a government website.
         </div>
-
-        <div className="app-layout">
+        <div className="app-shell">
           <Sidebar />
-          <main className="main-content" role="main" id="main-content">
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </main>
-        </div>
-
-        {/* Footer */}
-        <div className="app-footer" role="contentinfo">
-          <span>CivicProof v1.0.0 — Independent open-source research tool. Not affiliated with any government agency.</span>
+          <div className="main-area">
+            <main id="main-content" className="page-content">
+              <ToastProvider>
+                {children}
+              </ToastProvider>
+            </main>
+          </div>
         </div>
       </body>
     </html>

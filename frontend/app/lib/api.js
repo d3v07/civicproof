@@ -47,6 +47,12 @@ export async function createCase(title, seedInput) {
     });
 }
 
+export async function listCases(page = 1, pageSize = 50, status = null) {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (status) params.set('status', status);
+    return apiFetch(`/v1/cases?${params}`);
+}
+
 export async function getCase(caseId) {
     return apiFetch(`/v1/cases/${caseId}`);
 }

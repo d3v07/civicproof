@@ -1,18 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { mockCases } from './lib/mock-data';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AgentProgressInline } from './components/AgentActivity';
+import Link from 'next/link';
+import { Search, ArrowRight, Clock, Shield, Zap, Database } from 'lucide-react';
+import { mockCases } from './lib/mock-data';
+import * as api from './lib/api';
 
 export default function HomePage() {
-  const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
+  const [cases, setCases] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
-    setCases(mockCases);
+    api.listCases(1, 5)
+      .then((data) => setCases(data.items || data))
+      .catch(() => setCases(mockCases));
   }, []);
 
   const handleSearch = (e) => {
@@ -22,110 +25,111 @@ export default function HomePage() {
     }
   };
 
-  const activeCases = cases.filter(c => c.status === 'processing');
-  const completedCases = cases.filter(c => c.status === 'complete');
+  const suggestions = ['Acme Defense Solutions', 'GLBTCH1234', 'SPE4A121D0042', 'Meridian Logistics'];
 
   return (
-    <div>
-      {/* Search-first hero */}
-      <div className="home-hero">
-        <h1 className="home-hero-title">Research public spending data</h1>
-        <form onSubmit={handleSearch} className="home-search-form">
-          <div className="search-container" style={{ maxWidth: 640 }}>
-            <span className="search-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="8" cy="8" r="5.5" /><line x1="12" y1="12" x2="16" y2="16" />
-              </svg>
-            </span>
-            <input
-              className="search-input"
-              placeholder="Enter a company name, UEI, CAGE code, or award ID..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search federal entities"
-              autoFocus
-            />
-          </div>
-        </form>
+    <div style={{ maxWidth: 680, margin: '0 auto', paddingTop: 80 }}>
+      {/* Hero */}
+      <div style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, marginBottom: 12 }}>
+          Trace federal spending.
+          <br />
+          <span style={{ color: 'var(--accent-2)' }}>Surface what matters.</span>
+        </h1>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 520 }}>
+          Search 6 federal data sources. AI agents resolve entities, build evidence
+          graphs, and surface risk signals — every claim cited, every step audited.
+        </p>
       </div>
 
-      <div className="page-body">
-        {/* Active investigations */}
-        {activeCases.length > 0 && (
-          <div className="home-section">
-            <div className="home-section-header">
-              <h2 className="home-section-title">In Progress</h2>
-              <span className="home-section-count">{activeCases.length}</span>
-            </div>
-            {activeCases.map((c) => (
-              <Link key={c.case_id} href={`/cases/${c.case_id}`} className="case-row">
-                <div className="case-row-main">
-                  <span className="case-row-title">{c.title}</span>
-                  <span className="case-row-meta">{Object.values(c.seed_input).join(' · ')}</span>
-                  <AgentProgressInline caseId={c.case_id} />
+      {/* Search */}
+      <form onSubmit={handleSearch} style={{ marginBottom: 12 }}>
+        <div className="search-wrap">
+          <span className="search-icon"><Search size={17} /></span>
+          <input
+            className="search-input"
+            style={{ padding: '14px 14px 14px 44px', fontSize: 15 }}
+            placeholder="Company name, UEI, CAGE code, or award ID..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+          />
+        </div>
+      </form>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 56, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', padding: '4px 0' }}>Try:</span>
+        {suggestions.map((s) => (
+          <button
+            key={s}
+            onClick={() => { setQuery(s); }}
+            style={{
+              padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              color: 'var(--text-2)', transition: 'all 100ms',
+            }}
+            onMouseEnter={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.color = 'var(--accent-2)'; }}
+            onMouseLeave={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-2)'; }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* How it works */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 48 }}>
+        {[
+          { icon: Database, label: 'Search', sub: '6 sources queried' },
+          { icon: Zap, label: 'Analyze', sub: '6 AI agents' },
+          { icon: Shield, label: 'Audit', sub: 'Every claim cited' },
+        ].map((s) => (
+          <div key={s.label} style={{
+            padding: '16px', borderRadius: 10,
+            border: '1px solid var(--border)', background: 'var(--bg-card)',
+            textAlign: 'center',
+          }}>
+            <s.icon size={20} style={{ color: 'var(--accent)', marginBottom: 8 }} strokeWidth={1.5} />
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{s.label}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent */}
+      {cases.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={13} /> Recent
+            </h2>
+            <Link href="/cases" style={{ fontSize: 12, color: 'var(--accent-2)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+              All cases <ArrowRight size={11} />
+            </Link>
+          </div>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {cases.slice(0, 5).map((c, i) => (
+              <Link
+                key={c.case_id}
+                href={`/cases/${c.case_id}`}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '11px 14px',
+                  borderBottom: i < Math.min(cases.length, 5) - 1 ? '1px solid var(--border)' : 'none',
+                  textDecoration: 'none', color: 'inherit', transition: 'background 80ms',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{c.case_id}</div>
                 </div>
-                <div className="case-row-right">
-                  <span className={`badge badge-${c.status}`}>{c.status}</span>
-                  <span className="case-row-date">{new Date(c.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                </div>
+                <span className={`badge badge-${c.status}`}>{c.status}</span>
               </Link>
             ))}
           </div>
-        )}
-
-        {/* Completed */}
-        {completedCases.length > 0 && (
-          <div className="home-section">
-            <div className="home-section-header">
-              <h2 className="home-section-title">Completed</h2>
-              <span className="home-section-count">{completedCases.length}</span>
-            </div>
-            {completedCases.map((c) => (
-              <Link key={c.case_id} href={`/cases/${c.case_id}`} className="case-row">
-                <div className="case-row-main">
-                  <span className="case-row-title">{c.title}</span>
-                  <span className="case-row-meta">{Object.values(c.seed_input).join(' · ')}</span>
-                </div>
-                <div className="case-row-right">
-                  <span className={`badge badge-${c.status}`}>{c.status}</span>
-                  <span className="case-row-date">{new Date(c.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {cases.length === 0 && (
-          <div className="empty-state" style={{ padding: '80px 0', maxWidth: 480, margin: '0 auto' }}>
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="var(--color-primary-light)" strokeWidth="1.5" style={{ marginBottom: 24 }}>
-              <circle cx="28" cy="28" r="16" />
-              <line x1="39" y1="39" x2="56" y2="56" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-gray-90)', margin: '0 0 12px 0' }}>Start Your First Research Query</h2>
-            <p style={{ fontSize: 15, color: 'var(--color-gray-60)', margin: '0 0 24px 0', lineHeight: 1.6 }}>
-              CivicProof analyzes publicly available federal spending data, retrieves evidence, and maps entity relationships.
-            </p>
-            <div style={{ textAlign: 'left', background: 'var(--color-gray-2)', border: '1px solid var(--color-gray-10)', borderRadius: 'var(--radius)', padding: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-gray-50)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>Try searching for a demo entity:</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {['Acme Corp', 'SpaceX', 'Palantir Technologies', '0445R8M2N'].map(chip => (
-                  <button
-                    key={chip}
-                    className="badge badge-handling"
-                    style={{ background: 'var(--color-white)', border: '1px solid var(--color-gray-20)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 13, padding: '6px 14px' }}
-                    onClick={() => {
-                      setQuery(chip);
-                      document.querySelector('.search-input').focus();
-                    }}
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

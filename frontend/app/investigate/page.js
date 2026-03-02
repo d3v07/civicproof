@@ -16,11 +16,20 @@ function NewCaseModal({ onClose, onLaunch }) {
   const [seedValue, setSeedValue] = useState('');
   const [error, setError] = useState('');
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !seedValue.trim()) { setError('Title and seed value are required.'); return; }
-    try { await api.createCase(title, seedValue); } catch { /* mock fallback */ }
-    onLaunch(title, seedValue);
+    setSubmitting(true);
+    let caseId = null;
+    try {
+      const data = await api.createCase(title, { [seedType]: seedValue });
+      caseId = data.case_id;
+    } catch {
+      // API unavailable — launch without real caseId
+    }
+    onLaunch({ title, seedValue, caseId });
     onClose();
   };
 
@@ -52,7 +61,9 @@ function NewCaseModal({ onClose, onLaunch }) {
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Launch Research</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Launching...' : 'Launch Research'}
+            </button>
           </div>
         </form>
       </div>
@@ -92,8 +103,8 @@ function InvestigateContent() {
     else setResults(mockEntities.items);
   };
 
-  const handleLaunch = (title, seedValue) => {
-    setLiveSession({ title, seedValue });
+  const handleLaunch = ({ title, seedValue, caseId }) => {
+    setLiveSession({ title, seedValue, caseId });
     addToast({ message: `Research launched: ${title}`, type: 'success' });
   };
 
@@ -103,6 +114,7 @@ function InvestigateContent() {
       <LiveInvestigation
         title={liveSession.title}
         seedValue={liveSession.seedValue}
+        caseId={liveSession.caseId}
         onComplete={() => setLiveSession(null)}
       />
     );
@@ -156,7 +168,14 @@ function InvestigateContent() {
                     <span className={`badge badge-${entity.entity_type === 'vendor' ? 'finding' : 'hypothesis'}`}>{entity.entity_type}</span>
                     <button
                       className="btn btn-ghost btn-sm"
-                      onClick={() => handleLaunch(`${entity.canonical_name} — Investigation`, entity.canonical_name)}
+                      onClick={async () => {
+                        let caseId = null;
+                        try {
+                          const data = await api.createCase(`${entity.canonical_name} — Investigation`, { vendor_name: entity.canonical_name });
+                          caseId = data.case_id;
+                        } catch { /* API unavailable */ }
+                        handleLaunch({ title: `${entity.canonical_name} — Investigation`, seedValue: entity.canonical_name, caseId });
+                      }}
                     >
                       Investigate <ArrowRight size={12} />
                     </button>

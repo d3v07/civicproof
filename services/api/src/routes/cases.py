@@ -15,11 +15,16 @@ from civicproof_common.db.session import get_session
 from civicproof_common.hashing import content_hash
 from civicproof_common.schemas.cases import CaseStatus
 from civicproof_common.telemetry import StructuredLogger
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+try:
+    from ..renderers.pdf import render_case_pack_pdf as _render_pdf
+except ImportError:
+    from renderers.pdf import render_case_pack_pdf as _render_pdf  # type: ignore[no-redef]
 
 router = APIRouter()
 logger = StructuredLogger(__name__)
@@ -237,4 +242,84 @@ async def get_case_pack(
         audit_events=audit_events_out,
         generated_at=latest_pack.generated_at if latest_pack else datetime.now(UTC),
         pack_hash=latest_pack.pack_hash if latest_pack else None,
+    )
+
+
+@router.get("/cases/{case_id}/pack.pdf")
+async def get_case_pack_pdf(
+    case_id: str,
+    db: AsyncSession = Depends(get_session),
+) -> Response:
+    result = await db.execute(
+        select(CaseModel)
+        .where(CaseModel.case_id == case_id)
+        .options(
+            selectinload(CaseModel.claims).selectinload(ClaimModel.citations),
+            selectinload(CaseModel.audit_events),
+            selectinload(CaseModel.case_packs),
+        )
+    )
+    case = result.scalar_one_or_none()
+    if case is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "case_not_found", "case_id": case_id},
+        )
+
+    if case.status not in (CaseStatus.COMPLETE.value, CaseStatus.AUDITING.value):
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "pack_not_ready", "case_id": case_id, "status": case.status},
+        )
+
+    latest_pack = (
+        sorted(case.case_packs, key=lambda p: p.generated_at, reverse=True)[0]
+        if case.case_packs
+        else None
+    )
+
+    claims_data = [
+        {
+            "claim_id": c.claim_id,
+            "statement": c.statement,
+            "claim_type": c.claim_type,
+            "confidence": c.confidence,
+        }
+        for c in case.claims
+    ]
+    citations_data = [
+        {
+            "citation_id": cit.citation_id,
+            "claim_id": cit.claim_id,
+            "artifact_id": cit.artifact_id,
+            "excerpt": cit.excerpt,
+        }
+        for claim in case.claims
+        for cit in claim.citations
+    ]
+    audit_data = [
+        {
+            "audit_event_id": a.audit_event_id,
+            "stage": a.stage,
+            "policy_decision": a.policy_decision,
+            "detail": a.detail,
+            "timestamp": a.timestamp.isoformat(),
+        }
+        for a in case.audit_events
+    ]
+
+    pdf_bytes = _render_pdf(
+        case_id=case_id,
+        title=case.title,
+        claims=claims_data,
+        citations=citations_data,
+        audit_events=audit_data,
+        pack_hash=latest_pack.pack_hash if latest_pack else None,
+        generated_at=latest_pack.generated_at if latest_pack else None,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="civicproof_{case_id}.pdf"'},
     )

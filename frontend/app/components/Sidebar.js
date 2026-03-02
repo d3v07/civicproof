@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, FolderOpen, Database, FileText, BookOpen } from 'lucide-react';
+import { Search, FolderOpen, Database, FileText, BookOpen, BarChart3 } from 'lucide-react';
 
 const NAV = [
   { label: 'Investigate', href: '/', icon: Search },
   { label: 'Cases', href: '/cases', icon: FolderOpen },
+  { label: 'Metrics', href: '/metrics', icon: BarChart3 },
   { label: 'Sources', href: '/sources', icon: Database },
   { label: 'User Guide', href: '/guide', icon: BookOpen },
   { label: 'About', href: '/about', icon: FileText },

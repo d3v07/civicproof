@@ -28,30 +28,18 @@ class USAspendingConnector(BaseConnector):
     rate_limit_rps = 5.0
     base_url = BASE_URL
 
-    # Fields returned from award search
+    # Core fields — keep small to avoid 500s on large result sets
     AWARD_FIELDS = [
         "Award ID",
         "Recipient Name",
         "Award Amount",
-        "Total Outlays",
         "Awarding Agency",
-        "Awarding Sub Agency",
         "Award Type",
         "Start Date",
         "End Date",
-        "recipient_id",
-        "internal_id",
-        "generated_internal_id",
-        "Place of Performance City Code",
-        "Place of Performance State Code",
-        "Recipient DUNS",
         "Recipient UEI",
-        "Contract Award Type",
-        "Pricing Type",
-        "Set Aside Type",
         "Extent Competed",
         "NAICS Code",
-        "PSC Code",
     ]
 
     async def fetch_page(self, params: FetchParams) -> FetchResult:
@@ -62,8 +50,10 @@ class USAspendingConnector(BaseConnector):
         query = params.query
         if "recipient_search_text" in query:
             filters["recipient_search_text"] = query["recipient_search_text"]
-        if "award_type_codes" in query:
-            filters["award_type_codes"] = query["award_type_codes"]
+        # award_type_codes is required by the API
+        filters["award_type_codes"] = query.get(
+            "award_type_codes", ["A", "B", "C", "D"]
+        )
         if "naics_codes" in query:
             filters["naics_codes"] = [{"naics_code": c} for c in query["naics_codes"]]
 
@@ -107,24 +97,15 @@ class USAspendingConnector(BaseConnector):
                 "award_id": record.get("Award ID", ""),
                 "recipient_name": record.get("Recipient Name", ""),
                 "award_amount": record.get("Award Amount"),
-                "total_outlays": record.get("Total Outlays"),
                 "awarding_agency": record.get("Awarding Agency", ""),
-                "awarding_sub_agency": record.get("Awarding Sub Agency", ""),
                 "award_type": record.get("Award Type", ""),
                 "start_date": record.get("Start Date", ""),
                 "end_date": record.get("End Date", ""),
                 "internal_id": record.get("internal_id"),
                 "generated_internal_id": record.get("generated_internal_id", ""),
                 "recipient_uei": record.get("Recipient UEI", ""),
-                "recipient_duns": record.get("Recipient DUNS", ""),
-                "pop_city_code": record.get("Place of Performance City Code", ""),
-                "pop_state_code": record.get("Place of Performance State Code", ""),
-                "contract_award_type": record.get("Contract Award Type", ""),
-                "pricing_type": record.get("Pricing Type", ""),
-                "set_aside_type": record.get("Set Aside Type", ""),
                 "extent_competed": record.get("Extent Competed", ""),
                 "naics_code": record.get("NAICS Code", ""),
-                "psc_code": record.get("PSC Code", ""),
             }
             artifacts.append(artifact)
 
@@ -159,7 +140,7 @@ class USAspendingConnector(BaseConnector):
         params = FetchParams(
             query={"recipient_search_text": [name]},
             page=1,
-            page_size=100,
+            page_size=25,
             since=since,
         )
         for _ in range(max_pages):

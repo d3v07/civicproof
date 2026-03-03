@@ -14,7 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
 class DataSourceModel(Base):
     __tablename__ = "data_source"
 
-    source_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    source_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     base_url: Mapped[str] = mapped_column(Text, nullable=False)
     rate_limit_rps: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
@@ -51,9 +51,9 @@ class DataSourceModel(Base):
 class IngestRunModel(Base):
     __tablename__ = "ingest_run"
 
-    run_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    run_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     source_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("data_source.source_id"), nullable=False
+        String(36), ForeignKey("data_source.source_id"), nullable=False
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     started_at: Mapped[datetime] = mapped_column(
@@ -77,9 +77,9 @@ class IngestRunModel(Base):
 class RawArtifactModel(Base):
     __tablename__ = "raw_artifact"
 
-    artifact_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    artifact_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     ingest_run_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("ingest_run.run_id"), nullable=True
+        String(36), ForeignKey("ingest_run.run_id"), nullable=True
     )
     source: Mapped[str] = mapped_column(String(64), nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -113,9 +113,9 @@ class RawArtifactModel(Base):
 class ParsedDocModel(Base):
     __tablename__ = "parsed_doc"
 
-    doc_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    doc_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     artifact_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("raw_artifact.artifact_id"), nullable=False
+        String(36), ForeignKey("raw_artifact.artifact_id"), nullable=False
     )
     doc_type: Mapped[str] = mapped_column(String(64), nullable=False)
     extracted_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -134,7 +134,7 @@ class ParsedDocModel(Base):
 class EntityModel(Base):
     __tablename__ = "entity"
 
-    entity_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    entity_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
     canonical_name: Mapped[str] = mapped_column(Text, nullable=False)
     aliases: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
@@ -164,19 +164,19 @@ class RelationshipModel(Base):
     __tablename__ = "relationship"
 
     relationship_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), primary_key=True, default=_uuid
+        String(36), primary_key=True, default=_uuid
     )
     source_entity_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("entity.entity_id"), nullable=False
+        String(36), ForeignKey("entity.entity_id"), nullable=False
     )
     target_entity_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("entity.entity_id"), nullable=False
+        String(36), ForeignKey("entity.entity_id"), nullable=False
     )
     rel_type: Mapped[str] = mapped_column(String(64), nullable=False)
     evidence_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     provenance_artifact_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), nullable=True
+        String(36), nullable=True
     )
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
@@ -193,12 +193,12 @@ class RelationshipModel(Base):
 class EntityMentionModel(Base):
     __tablename__ = "entity_mention"
 
-    mention_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    mention_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     source_artifact_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("raw_artifact.artifact_id"), nullable=False
+        String(36), ForeignKey("raw_artifact.artifact_id"), nullable=False
     )
     resolved_entity_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("entity.entity_id"), nullable=True
+        String(36), ForeignKey("entity.entity_id"), nullable=True
     )
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     offset_start: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -215,7 +215,7 @@ class EntityMentionModel(Base):
 class CaseModel(Base):
     __tablename__ = "case"
 
-    case_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    case_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     seed_input: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -241,9 +241,9 @@ class CaseModel(Base):
 class ClaimModel(Base):
     __tablename__ = "claim"
 
-    claim_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    claim_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     case_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("case.case_id"), nullable=False
+        String(36), ForeignKey("case.case_id"), nullable=False
     )
     statement: Mapped[str] = mapped_column(Text, nullable=False)
     claim_type: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -263,12 +263,12 @@ class ClaimModel(Base):
 class CitationModel(Base):
     __tablename__ = "citation"
 
-    citation_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    citation_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     claim_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("claim.claim_id"), nullable=False
+        String(36), ForeignKey("claim.claim_id"), nullable=False
     )
     artifact_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("raw_artifact.artifact_id"), nullable=False
+        String(36), ForeignKey("raw_artifact.artifact_id"), nullable=False
     )
     excerpt: Mapped[str] = mapped_column(Text, nullable=False)
     page_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -282,10 +282,10 @@ class AuditEventModel(Base):
     __tablename__ = "audit_event"
 
     audit_event_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), primary_key=True, default=_uuid
+        String(36), primary_key=True, default=_uuid
     )
     case_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("case.case_id"), nullable=False
+        String(36), ForeignKey("case.case_id"), nullable=False
     )
     stage: Mapped[str] = mapped_column(String(64), nullable=False)
     policy_decision: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -302,9 +302,9 @@ class AuditEventModel(Base):
 class PolicyDecisionModel(Base):
     __tablename__ = "policy_decision"
 
-    decision_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    decision_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     case_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("case.case_id"), nullable=False
+        String(36), ForeignKey("case.case_id"), nullable=False
     )
     policy_name: Mapped[str] = mapped_column(String(128), nullable=False)
     decision: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -322,7 +322,7 @@ class PolicyDecisionModel(Base):
 class EvalRunModel(Base):
     __tablename__ = "eval_run"
 
-    eval_run_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    eval_run_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     eval_suite: Mapped[str] = mapped_column(String(128), nullable=False)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
@@ -342,11 +342,11 @@ class EvalRunModel(Base):
 class EvalResultModel(Base):
     __tablename__ = "eval_result"
 
-    result_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    result_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     eval_run_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("eval_run.eval_run_id"), nullable=False
+        String(36), ForeignKey("eval_run.eval_run_id"), nullable=False
     )
-    case_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
+    case_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     evaluator: Mapped[str] = mapped_column(String(128), nullable=False)
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -363,9 +363,9 @@ class EvalResultModel(Base):
 class CasePackModel(Base):
     __tablename__ = "case_pack"
 
-    pack_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    pack_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     case_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("case.case_id"), nullable=False
+        String(36), ForeignKey("case.case_id"), nullable=False
     )
     pack_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)

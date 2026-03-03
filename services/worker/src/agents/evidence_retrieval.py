@@ -7,14 +7,19 @@ fetches for stale or missing data via connector calls.
 
 from __future__ import annotations
 
+import json
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from civicproof_common.db.models import RawArtifactModel
+from civicproof_common.hashing import content_hash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..connectors.usaspending import USAspendingConnector
 
 logger = logging.getLogger(__name__)
 
@@ -138,21 +143,83 @@ class EvidenceRetrievalAgent:
                 "threshold_days": self._staleness.days,
             })
 
+        # Fetch from USAspending if missing or stale
+        if "usaspending" in manifest.missing_sources or "usaspending" in manifest.stale_sources:
+            fetched = await self._fetch_usaspending(entity_name, result)
+            if fetched:
+                refreshed = await self._query_artifacts(entity_name, entity_uei)
+                manifest.artifact_ids = [a.artifact_id for a in refreshed]
+                manifest.total_artifacts = len(refreshed)
+                manifest.artifacts_by_source = {}
+                for a in refreshed:
+                    manifest.artifacts_by_source[a.source] = (
+                        manifest.artifacts_by_source.get(a.source, 0) + 1
+                    )
+                if "usaspending" in manifest.missing_sources:
+                    manifest.missing_sources.remove("usaspending")
+                if "usaspending" in manifest.stale_sources:
+                    manifest.stale_sources.remove("usaspending")
+
         return result
+
+    async def _fetch_usaspending(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch awards from USAspending and store as raw artifacts."""
+        connector = USAspendingConnector()
+        stored = 0
+        try:
+            records = await connector.search_by_recipient_name(entity_name, max_pages=2)
+            for record in records:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="usaspending",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/usaspending/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "usaspending",
+                "records_fetched": len(records),
+                "records_stored": stored,
+            })
+            logger.info("usaspending fetch entity=%s stored=%d", entity_name, stored)
+        except Exception as exc:
+            logger.warning("usaspending fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed",
+                "source": "usaspending",
+                "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
 
     async def _query_artifacts(
         self, entity_name: str, entity_uei: str | None = None,
     ) -> list[RawArtifactModel]:
         """Query artifacts related to an entity by name or UEI."""
-        from sqlalchemy import or_
+        from sqlalchemy import cast, or_
+        from sqlalchemy.types import Text
 
         conditions = []
 
-        # Search by name in source_url or metadata
         if entity_name:
             name_lower = entity_name.lower()
             conditions.append(
                 RawArtifactModel.source_url.ilike(f"%{name_lower}%")
+            )
+            # Also search inside JSONB metadata (recipient_name etc.)
+            conditions.append(
+                cast(RawArtifactModel.metadata_, Text).ilike(f"%{name_lower}%")
             )
 
         if not conditions:

@@ -6,6 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+import redis.asyncio as aioredis
+from civicproof_common.config import get_settings
 from civicproof_common.db.models import (
     AuditEventModel,
     CaseModel,
@@ -14,6 +16,7 @@ from civicproof_common.db.models import (
 from civicproof_common.db.session import get_session
 from civicproof_common.hashing import content_hash
 from civicproof_common.schemas.cases import CaseStatus
+from civicproof_common.schemas.events import EventEnvelope, EventType
 from civicproof_common.telemetry import StructuredLogger
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -145,6 +148,24 @@ async def create_case(
         policy_decision="accepted",
         artifact_id=None,
     )
+
+    # Emit CASE_CREATED event to Redis for worker pickup
+    try:
+        settings = get_settings()
+        rc = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        event = EventEnvelope.build(
+            event_type=EventType.CASE_CREATED,
+            source="api",
+            payload={"case_id": case.case_id, "seed_input": body.seed_input},
+            idempotency_key=f"case_created:{case.case_id}",
+        )
+        await rc.rpush("civicproof:events", event.model_dump_json())
+        await rc.aclose()
+    except Exception:
+        _stdlib_logger.warning(
+            "failed to emit CASE_CREATED event for %s", case.case_id, exc_info=True
+        )
+
     return _row_to_case_response(case)
 
 

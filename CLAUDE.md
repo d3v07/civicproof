@@ -63,4 +63,19 @@ Every PR must pass:
 ## Tech stack
 **Local dev**: Postgres, MinIO, OpenSearch, Redis, Kafka/queue, vLLM
 **GCP prod**: Cloud Run, Cloud SQL, Cloud Storage, Memorystore, Vertex AI, Pub/Sub, Cloud Tasks
-**LLM**: Vertex AI Gemini (primary, GCP credits) + OpenRouter BYOK (fallback)
+**LLM**: OpenRouter BYOK (primary, Qwen 2.5 72B + 14B) + Vertex AI Gemini (fallback)
+**Pipeline**: LangGraph StateGraph, 6 nodes, conditional routing
+**Frontend**: Next.js 16, React 19, Tailwind 4, Recharts, react-force-graph-2d
+
+## Current execution phase
+Read `~/.claude/projects/-Users-dev-Documents-PROJECT-LOWLEVEL-SYSTEM-DESIGN-PROJECTS-CivicProof/memory/MEMORY.md` for current phase and what's done/pending. Always check this at session start.
+
+## Build rules (project-specific, extends global FAANG principles)
+1. **Current milestone**: Get ONE vertical slice working before touching anything else
+   - The slice: vendor name → Entity Resolver → Evidence Retrieval (USAspending) → Case Composer → Auditor Gate → frontend displays case pack
+   - Skip Graph Builder + Anomaly Detector until the slice works
+2. **Pipeline architecture**: LangGraph in `services/worker/src/graph/`. Nodes in `graph/nodes/`, legacy agents in `agents/`, connectors in `connectors/`
+3. **LLM calls**: OpenRouter via `langchain_openai.ChatOpenAI` with `base_url=https://openrouter.ai/api/v1`. Config in `graph/llm.py`. Cost tracking per agent.
+4. **Agent testability**: Each graph node must work with injected mocks (mock DB, mock LLM, mock HTTP). No node should require all infra running to unit test.
+5. **Feature flags for optional agents**: `ENABLE_GRAPH_BUILDER`, `ENABLE_ANOMALY_DETECTOR` in config. Pipeline skips disabled nodes.
+6. **No mock fallbacks in frontend**: If API is down, show error state. Never show fake data silently.

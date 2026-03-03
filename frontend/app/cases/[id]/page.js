@@ -182,14 +182,18 @@ export default function CaseDetailPage() {
 
   useEffect(() => {
     async function load() {
+      let c = null;
       try {
-        const c = await api.getCase(params.id);
+        c = await api.getCase(params.id);
         setCaseData(c);
+      } catch {
+        setCaseData(mockCases.find((mc) => mc.case_id === params.id) || mockCases[0]);
+      }
+      try {
         const p = await api.getCasePack(params.id);
         setPack(p);
       } catch {
-        setCaseData(mockCases.find((c) => c.case_id === params.id) || mockCases[0]);
-        setPack(mockCasePack);
+        setPack({ claims: [], citations: [], audit_events: [], generated_at: c?.created_at || new Date().toISOString(), pack_hash: null });
       }
     }
     load();

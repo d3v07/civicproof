@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Download, Copy, ChevronDown, ChevronRight, ExternalLink, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { mockCases, mockCasePack } from '../../lib/mock-data';
 import * as api from '../../lib/api';
 import { useToast } from '../../components/ToastProvider';
 
@@ -176,28 +175,35 @@ export default function CaseDetailPage() {
   const params = useParams();
   const [caseData, setCaseData] = useState(null);
   const [pack, setPack] = useState(null);
+  const [error, setError] = useState(null);
   const [openClaim, setOpenClaim] = useState(null);
   const [activeTab, setActiveTab] = useState('findings');
   const { addToast } = useToast();
 
   useEffect(() => {
     async function load() {
-      let c = null;
       try {
-        c = await api.getCase(params.id);
+        const c = await api.getCase(params.id);
         setCaseData(c);
-      } catch {
-        setCaseData(mockCases.find((mc) => mc.case_id === params.id) || mockCases[0]);
+      } catch (e) {
+        setError('Failed to load case. Is the API running?');
+        return;
       }
       try {
         const p = await api.getCasePack(params.id);
         setPack(p);
       } catch {
-        setPack({ claims: [], citations: [], audit_events: [], generated_at: c?.created_at || new Date().toISOString(), pack_hash: null });
+        setPack({ claims: [], citations: [], audit_events: [], generated_at: new Date().toISOString(), pack_hash: null });
       }
     }
     load();
   }, [params.id]);
+
+  if (error) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: 'var(--red)' }}>{error}</div>
+    );
+  }
 
   if (!caseData || !pack) {
     return (

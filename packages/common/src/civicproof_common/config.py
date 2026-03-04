@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     OPENROUTER_DEFAULT_MODEL: str = Field(default="anthropic/claude-3-5-sonnet")
 
     LLM_MODEL_PRIMARY: str = Field(default="qwen/qwen-2.5-72b-instruct")
-    LLM_MODEL_LIGHTWEIGHT: str = Field(default="qwen/qwen-2.5-14b-instruct")
+    LLM_MODEL_LIGHTWEIGHT: str = Field(default="qwen/qwen-2.5-7b-instruct")
     LLM_MAX_RETRIES: int = Field(default=2)
     LANGGRAPH_RECURSION_LIMIT: int = Field(default=25)
 
@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     EVIDENCE_RETENTION_DAYS: int = Field(default=365)
 
     WORKER_HEALTH_PORT: int = Field(default=8070)
+
+    ENABLE_GRAPH_BUILDER: bool = Field(default=False)
+    ENABLE_ANOMALY_DETECTOR: bool = Field(default=False)
 
 
 @lru_cache(maxsize=1)

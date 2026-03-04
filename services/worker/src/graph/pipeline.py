@@ -1,9 +1,7 @@
 """LangGraph StateGraph pipeline — replaces Orchestrator.run_pipeline().
 
-6-node linear pipeline with two conditional exits:
-  1. entity_resolver → (no entity? END) → evidence_retrieval
-  2. evidence_retrieval → graph_builder → anomaly_detector → case_composer
-  3. case_composer → auditor_gate → (approved? END : retry case_composer, max 2)
+6-node pipeline with feature flags for graph_builder and anomaly_detector.
+Minimum viable path: entity_resolver → evidence_retrieval → case_composer → auditor_gate
 """
 
 from __future__ import annotations
@@ -40,12 +38,11 @@ def route_after_audit(state: CivicProofState) -> str:
 
 
 def build_graph() -> StateGraph:
+    settings = get_settings()
     builder = StateGraph(CivicProofState)
 
     builder.add_node("entity_resolver", entity_resolver_node)
     builder.add_node("evidence_retrieval", evidence_retrieval_node)
-    builder.add_node("graph_builder", graph_builder_node)
-    builder.add_node("anomaly_detector", anomaly_detector_node)
     builder.add_node("case_composer", case_composer_node)
     builder.add_node("auditor_gate", auditor_gate_node)
 
@@ -56,9 +53,24 @@ def build_graph() -> StateGraph:
         route_after_entity_resolution,
         {"evidence_retrieval": "evidence_retrieval", END: END},
     )
-    builder.add_edge("evidence_retrieval", "graph_builder")
-    builder.add_edge("graph_builder", "anomaly_detector")
-    builder.add_edge("anomaly_detector", "case_composer")
+
+    if settings.ENABLE_GRAPH_BUILDER and settings.ENABLE_ANOMALY_DETECTOR:
+        builder.add_node("graph_builder", graph_builder_node)
+        builder.add_node("anomaly_detector", anomaly_detector_node)
+        builder.add_edge("evidence_retrieval", "graph_builder")
+        builder.add_edge("graph_builder", "anomaly_detector")
+        builder.add_edge("anomaly_detector", "case_composer")
+    elif settings.ENABLE_GRAPH_BUILDER:
+        builder.add_node("graph_builder", graph_builder_node)
+        builder.add_edge("evidence_retrieval", "graph_builder")
+        builder.add_edge("graph_builder", "case_composer")
+    elif settings.ENABLE_ANOMALY_DETECTOR:
+        builder.add_node("anomaly_detector", anomaly_detector_node)
+        builder.add_edge("evidence_retrieval", "anomaly_detector")
+        builder.add_edge("anomaly_detector", "case_composer")
+    else:
+        builder.add_edge("evidence_retrieval", "case_composer")
+
     builder.add_edge("case_composer", "auditor_gate")
     builder.add_conditional_edges(
         "auditor_gate",
@@ -71,8 +83,5 @@ def build_graph() -> StateGraph:
 
 @lru_cache(maxsize=1)
 def get_compiled_graph():
-    settings = get_settings()
     builder = build_graph()
-    return builder.compile(
-        recursion_limit=settings.LANGGRAPH_RECURSION_LIMIT,
-    )
+    return builder.compile()

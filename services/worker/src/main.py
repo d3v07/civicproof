@@ -35,13 +35,17 @@ async def handle_case_created(envelope: EventEnvelope, redis_client: aioredis.Re
         async with async_session_context() as db:
             await _update_case_status(db, case_id, "ingesting")
 
+        settings = get_settings()
         graph = get_compiled_graph()
-        result = await graph.ainvoke({
-            "case_id": case_id,
-            "seed_input": seed_input,
-            "retry_count": 0,
-            "pipeline_log": [],
-        })
+        result = await graph.ainvoke(
+            {
+                "case_id": case_id,
+                "seed_input": seed_input,
+                "retry_count": 0,
+                "pipeline_log": [],
+            },
+            {"recursion_limit": settings.LANGGRAPH_RECURSION_LIMIT},
+        )
 
         approved = result.get("audit_approved", False)
         async with async_session_context() as db:

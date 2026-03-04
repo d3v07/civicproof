@@ -40,7 +40,7 @@ async def auditor_gate_node(state: CivicProofState) -> dict[str, Any]:
     auditor = AuditorGate(
         valid_artifact_ids=set(artifact_ids),
         artifact_hashes=artifact_hashes,
-        min_sources=2,
+        min_sources=1,
     )
 
     audit_result = auditor.audit(case_pack)

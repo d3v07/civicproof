@@ -6,6 +6,7 @@ No mocking needed.
 
 
 from civicproof_common.anomalies.rules import (
+    AnomalyResult,
     detect_all_anomalies,
     detect_geographic_mismatch,
     detect_modification_inflation,
@@ -14,6 +15,29 @@ from civicproof_common.anomalies.rules import (
     detect_shared_address_ring,
     detect_sole_source_concentration,
 )
+
+
+# ── AnomalyResult dataclass ─────────────────────────────────────
+
+
+class TestAnomalyResult:
+    def test_defaults(self):
+        r = AnomalyResult(anomaly_type="test", detected=False)
+        assert r.severity == "none"
+        assert r.score == 0.0
+        assert r.evidence == {}
+
+    def test_is_risk_signal_true(self):
+        r = AnomalyResult(anomaly_type="t", detected=True, severity="high")
+        assert r.is_risk_signal is True
+
+    def test_is_risk_signal_false_not_detected(self):
+        r = AnomalyResult(anomaly_type="t", detected=False, severity="none")
+        assert r.is_risk_signal is False
+
+    def test_is_risk_signal_false_none_severity(self):
+        r = AnomalyResult(anomaly_type="t", detected=True, severity="none")
+        assert r.is_risk_signal is False
 
 # ── 1. Sole-source concentration ──────────────────────────────────
 
@@ -52,6 +76,38 @@ class TestSoleSourceConcentration:
         result = detect_sole_source_concentration([], "v1")
         assert result.detected is False
 
+    def test_wrong_vendor_ignored(self):
+        awards = [
+            {"vendor_id": "v2", "awarding_agency": "DoD", "extent_competed": "NOT COMPETED"}
+            for _ in range(10)
+        ]
+        result = detect_sole_source_concentration(awards, "v1")
+        assert result.detected is False
+
+    def test_too_few_awards_not_flagged(self):
+        awards = [
+            {"vendor_id": "v1", "awarding_agency": "DoD", "extent_competed": "NOT COMPETED"},
+            {"vendor_id": "v1", "awarding_agency": "DoD", "extent_competed": "NOT COMPETED"},
+        ]
+        result = detect_sole_source_concentration(awards, "v1")
+        assert result.detected is False  # needs >= 3
+
+    def test_sole_source_code_A(self):
+        awards = [
+            {"vendor_id": "v1", "awarding_agency": "DoD", "extent_competed": "A"}
+            for _ in range(4)
+        ]
+        result = detect_sole_source_concentration(awards, "v1")
+        assert result.detected is True
+
+    def test_is_sole_source_flag(self):
+        awards = [
+            {"vendor_id": "v1", "awarding_agency": "DoD", "is_sole_source": True}
+            for _ in range(4)
+        ]
+        result = detect_sole_source_concentration(awards, "v1")
+        assert result.detected is True
+
 
 # ── 2. Modification inflation ──────────────────────────────────────
 
@@ -78,6 +134,36 @@ class TestModificationInflation:
         result = detect_modification_inflation(award, threshold=0.50)
         assert result.detected is True
         assert result.severity in ("low", "medium", "high")
+
+    def test_negative_original_not_flagged(self):
+        award = {"original_amount": -100, "current_amount": 500}
+        result = detect_modification_inflation(award)
+        assert result.detected is False
+
+    def test_award_amount_fallback(self):
+        award = {"original_amount": 100, "award_amount": 200}
+        result = detect_modification_inflation(award)
+        assert result.detected is True
+
+    def test_modifications_list_counted(self):
+        award = {
+            "original_amount": 100,
+            "current_amount": 200,
+            "modifications": [{"amount": 50}, {"amount": 50}],
+        }
+        result = detect_modification_inflation(award)
+        assert result.evidence["modification_count"] == 2
+
+    def test_high_severity_over_2x(self):
+        award = {"original_amount": 100, "current_amount": 400}
+        result = detect_modification_inflation(award)
+        assert result.severity == "high"
+
+    def test_low_severity(self):
+        award = {"original_amount": 100, "current_amount": 160}
+        result = detect_modification_inflation(award)
+        assert result.detected is True
+        assert result.severity == "low"
 
 
 # ── 3. Geographic mismatch ────────────────────────────────────────
@@ -112,6 +198,18 @@ class TestGeographicMismatch:
         result = detect_geographic_mismatch({}, {}, threshold_miles=1000)
         assert result.detected is False
 
+    def test_custom_threshold(self):
+        vendor = {"latitude": 38.9, "longitude": -77.0}  # DC
+        nyc = {"latitude": 40.7, "longitude": -74.0}     # NYC
+        result = detect_geographic_mismatch(vendor, nyc, threshold_miles=100)
+        assert result.detected is True
+
+    def test_high_severity_far_distance(self):
+        vendor = {"latitude": 34.0, "longitude": -118.2}  # LA
+        perf = {"latitude": 40.7, "longitude": -74.0}     # NYC
+        result = detect_geographic_mismatch(vendor, perf, threshold_miles=1000)
+        assert result.severity in ("medium", "high")
+
 
 # ── 4. Rapid awarding ─────────────────────────────────────────────
 
@@ -138,6 +236,32 @@ class TestRapidAwarding:
     def test_insufficient_awards(self):
         awards = [{"vendor_id": "v1", "start_date": "2025-01-01"}]
         result = detect_rapid_awarding(awards, "v1", window_days=30, min_awards=3)
+        assert result.detected is False
+
+    def test_high_severity_many_awards(self):
+        awards = [
+            {"vendor_id": "v1", "start_date": f"2025-01-{i+1:02d}"}
+            for i in range(10)
+        ]
+        result = detect_rapid_awarding(awards, "v1")
+        assert result.detected is True
+        assert result.severity == "high"
+
+    def test_custom_window_too_small(self):
+        awards = [
+            {"vendor_id": "v1", "start_date": "2025-01-01"},
+            {"vendor_id": "v1", "start_date": "2025-01-15"},
+            {"vendor_id": "v1", "start_date": "2025-01-25"},
+        ]
+        result = detect_rapid_awarding(awards, "v1", window_days=10)
+        assert result.detected is False
+
+    def test_wrong_vendor_ignored(self):
+        awards = [
+            {"vendor_id": "v2", "start_date": f"2025-01-{i+1:02d}"}
+            for i in range(5)
+        ]
+        result = detect_rapid_awarding(awards, "v1")
         assert result.detected is False
 
 
@@ -225,3 +349,59 @@ class TestDetectAll:
         r2 = detect_all_anomalies(awards, "v1")
         assert len(r1) == len(r2)
         assert [a.anomaly_type for a in r1] == [a.anomaly_type for a in r2]
+
+    def test_includes_geographic(self):
+        dc = {"latitude": 38.9, "longitude": -77.0}
+        la = {"latitude": 34.0, "longitude": -118.2}
+        results = detect_all_anomalies([], "v1", vendor_location=dc, performance_location=la)
+        types = {r.anomaly_type for r in results}
+        assert "geographic_mismatch" in types
+
+    def test_includes_shared_address(self):
+        entities = [
+            {"entity_id": f"e{i}", "canonical_name": f"Corp {i}", "address": "123 Main St"}
+            for i in range(3)
+        ]
+        results = detect_all_anomalies([], "v1", entities=entities)
+        types = {r.anomaly_type for r in results}
+        assert "shared_address_ring" in types
+
+    def test_includes_officer_overlap(self):
+        officers = {
+            "e1": ["John Smith", "Jane Doe"],
+            "e2": ["John Smith", "Jane Doe"],
+        }
+        results = detect_all_anomalies([], "v1", entity_officers=officers)
+        types = {r.anomaly_type for r in results}
+        assert "officer_overlap" in types
+
+    def test_modification_inflation_included(self):
+        awards = [{
+            "vendor_id": "v1",
+            "awarding_agency": "DoD",
+            "extent_competed": "FULL AND OPEN",
+            "original_amount": 100,
+            "current_amount": 400,
+        }]
+        results = detect_all_anomalies(awards, "v1")
+        types = {r.anomaly_type for r in results}
+        assert "modification_inflation" in types
+
+    def test_empty_awards_empty_results(self):
+        results = detect_all_anomalies([], "v1")
+        assert results == []
+
+    def test_multiple_anomaly_types_combined(self):
+        awards = [
+            {
+                "vendor_id": "v1",
+                "awarding_agency": "DoD",
+                "extent_competed": "NOT COMPETED",
+                "start_date": f"2025-01-{i+1:02d}",
+            }
+            for i in range(5)
+        ]
+        results = detect_all_anomalies(awards, "v1")
+        types = {r.anomaly_type for r in results}
+        assert "sole_source_concentration" in types
+        assert "rapid_awarding" in types

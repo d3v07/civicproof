@@ -72,8 +72,8 @@ class Settings(BaseSettings):
 
     WORKER_HEALTH_PORT: int = Field(default=8070)
 
-    ENABLE_GRAPH_BUILDER: bool = Field(default=False)
-    ENABLE_ANOMALY_DETECTOR: bool = Field(default=False)
+    ENABLE_GRAPH_BUILDER: bool = Field(default=True)
+    ENABLE_ANOMALY_DETECTOR: bool = Field(default=True)
 
 
 @lru_cache(maxsize=1)

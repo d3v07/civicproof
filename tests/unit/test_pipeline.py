@@ -108,3 +108,43 @@ class TestBuildGraph:
         node_names = set(compiled.get_graph().nodes.keys())
         assert "graph_builder" in node_names
         assert "anomaly_detector" in node_names
+
+    def test_full_6_node_pipeline_has_all_nodes(self):
+        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True, anomaly_detector=True)):
+            from src.graph.pipeline import build_graph
+            graph = build_graph()
+
+        compiled = graph.compile()
+        node_names = set(compiled.get_graph().nodes.keys())
+        expected = {"entity_resolver", "evidence_retrieval", "graph_builder", "anomaly_detector", "case_composer", "auditor_gate"}
+        # __start__ and __end__ are internal langgraph nodes
+        assert expected.issubset(node_names)
+
+    def test_full_pipeline_edge_order(self):
+        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True, anomaly_detector=True)):
+            from src.graph.pipeline import build_graph
+            graph = build_graph()
+
+        compiled = graph.compile()
+        graph_data = compiled.get_graph()
+        edges = {(e.source, e.target) for e in graph_data.edges}
+        # Verify the full chain
+        assert ("evidence_retrieval", "graph_builder") in edges
+        assert ("graph_builder", "anomaly_detector") in edges
+        assert ("anomaly_detector", "case_composer") in edges
+        assert ("case_composer", "auditor_gate") in edges
+
+    def test_default_settings_now_enable_both(self):
+        """With updated config defaults, both agents should be enabled."""
+        from src.graph.pipeline import build_graph
+        with patch("src.graph.pipeline.get_settings") as mock_get:
+            settings = MagicMock()
+            settings.ENABLE_GRAPH_BUILDER = True
+            settings.ENABLE_ANOMALY_DETECTOR = True
+            mock_get.return_value = settings
+            graph = build_graph()
+
+        compiled = graph.compile()
+        node_names = set(compiled.get_graph().nodes.keys())
+        assert "graph_builder" in node_names
+        assert "anomaly_detector" in node_names

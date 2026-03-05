@@ -287,12 +287,17 @@ class TestAgentModelRouting:
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
-                mock_settings.return_value.LLM_MODEL_LIGHTWEIGHT = "qwen/qwen-2.5-14b-instruct"
+                mock_settings.return_value.LLM_MODEL_LIGHTWEIGHT = "qwen/qwen-2.5-7b-instruct"
                 mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+                mock_settings.return_value.GEMINI_API_KEY = None
+                mock_settings.return_value.OLLAMA_BASE_URL = "http://localhost:11434"
+                mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
                 mock_settings.return_value.LLM_MAX_RETRIES = 2
 
                 llm = get_agent_llm("entity_resolver", max_tokens=8192)
-                assert llm.max_tokens == 2048
+                from graph.llm import CascadingLLM
+                target = llm.providers[0] if isinstance(llm, CascadingLLM) else llm
+                assert target.max_tokens == 512
         except ImportError:
             pytest.skip("langchain-openai not installed")
 

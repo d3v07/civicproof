@@ -170,7 +170,7 @@ class CascadingLLM(BaseChatModel):
 
 def get_llm(
     temperature: float = 0.2,
-    max_tokens: int = 4096,
+    max_tokens: int = 1024,
     model_override: str | None = None,
     callbacks: list | None = None,
 ) -> BaseChatModel:
@@ -213,7 +213,7 @@ def get_llm(
 
 def get_lightweight_llm(
     temperature: float = 0.1,
-    max_tokens: int = 2048,
+    max_tokens: int = 512,
     callbacks: list | None = None,
 ) -> BaseChatModel:
     settings = get_settings()
@@ -228,7 +228,7 @@ def get_lightweight_llm(
 def get_agent_llm(
     agent_name: str,
     temperature: float = 0.2,
-    max_tokens: int = 4096,
+    max_tokens: int = 1024,
     case_id: str = "",
 ) -> BaseChatModel:
     """Return the right LLM for a given agent, with cost tracking."""
@@ -237,7 +237,7 @@ def get_agent_llm(
     if tier == "lightweight":
         return get_lightweight_llm(
             temperature=temperature,
-            max_tokens=min(max_tokens, 2048),
+            max_tokens=min(max_tokens, 512),
             callbacks=[cb],
         )
     return get_llm(

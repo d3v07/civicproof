@@ -119,8 +119,26 @@ function ClaimCard({ claim, citations, isOpen, onToggle }) {
   );
 }
 
-function EntityGraph({ claims, citations }) {
-  const graphData = useMemo(() => synthesizeGraph(claims, citations), [claims, citations]);
+function EntityGraph({ claims, citations, graphEdges }) {
+  const graphData = useMemo(() => {
+    if (graphEdges?.length > 0) {
+      const nodeMap = new Map();
+      const links = [];
+      graphEdges.forEach((edge) => {
+        if (!nodeMap.has(edge.source_entity_id)) {
+          nodeMap.set(edge.source_entity_id, { id: edge.source_entity_id, name: edge.source_name || edge.source_entity_id, type: 'finding', val: 1 });
+        }
+        if (!nodeMap.has(edge.target_entity_id)) {
+          nodeMap.set(edge.target_entity_id, { id: edge.target_entity_id, name: edge.target_name || edge.target_entity_id, type: 'finding', val: 1 });
+        }
+        nodeMap.get(edge.source_entity_id).val += edge.weight || 1;
+        nodeMap.get(edge.target_entity_id).val += edge.weight || 1;
+        links.push({ source: edge.source_entity_id, target: edge.target_entity_id });
+      });
+      return { nodes: Array.from(nodeMap.values()), links };
+    }
+    return synthesizeGraph(claims, citations);
+  }, [claims, citations, graphEdges]);
 
   if (graphData.nodes.length === 0) {
     return (
@@ -186,7 +204,11 @@ export default function CaseDetailPage() {
         const c = await api.getCase(params.id);
         setCaseData(c);
       } catch (e) {
-        setError('Failed to load case. Is the API running?');
+        if (e.message?.includes('404')) {
+          setError('not_found');
+        } else {
+          setError('Failed to load case. Is the API running?');
+        }
         return;
       }
       try {
@@ -199,15 +221,41 @@ export default function CaseDetailPage() {
     load();
   }, [params.id]);
 
+  if (error === 'not_found') {
+    return (
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 48, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8 }}>404</div>
+        <div style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 16 }}>Case not found</div>
+        <Link href="/cases" style={{ fontSize: 13, color: 'var(--accent)' }}>Back to Cases</Link>
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--red)' }}>{error}</div>
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <AlertTriangle size={20} style={{ color: 'var(--amber)', marginBottom: 8 }} />
+        <div style={{ color: 'var(--text-2)' }}>{error}</div>
+        <Link href="/cases" style={{ fontSize: 13, color: 'var(--accent)', marginTop: 12, display: 'inline-block' }}>Back to Cases</Link>
+      </div>
     );
   }
 
   if (!caseData || !pack) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading case...</div>
+      <div style={{ padding: 24 }}>
+        <div style={{ height: 14, width: '20%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 16 }} className="skeleton-pulse" />
+        <div style={{ height: 24, width: '50%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 8 }} className="skeleton-pulse" />
+        <div style={{ height: 14, width: '30%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 24 }} className="skeleton-pulse" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card" style={{ padding: 14, textAlign: 'center' }}>
+              <div style={{ height: 28, width: '40%', background: 'var(--bg-hover)', borderRadius: 4, margin: '0 auto 6px' }} className="skeleton-pulse" />
+              <div style={{ height: 12, width: '60%', background: 'var(--bg-hover)', borderRadius: 4, margin: '0 auto' }} className="skeleton-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -325,7 +373,7 @@ export default function CaseDetailPage() {
 
       {/* Entity Graph */}
       {activeTab === 'graph' && (
-        <EntityGraph claims={pack.claims} citations={pack.citations} />
+        <EntityGraph claims={pack.claims} citations={pack.citations} graphEdges={pack.graph_edges} />
       )}
 
       {/* Claims */}

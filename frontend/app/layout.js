@@ -1,5 +1,6 @@
 import './globals.css';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/ToastProvider';
 
 export const metadata = {
@@ -24,9 +25,11 @@ export default function RootLayout({ children }) {
           <Sidebar />
           <div className="main-area">
             <main id="main-content" className="page-content">
-              <ToastProvider>
-                {children}
-              </ToastProvider>
+              <ErrorBoundary>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </ErrorBoundary>
             </main>
           </div>
         </div>

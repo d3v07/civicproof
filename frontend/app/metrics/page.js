@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Activity, Shield, Clock, DollarSign, Database, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { mockMetrics } from '../lib/mock-data';
 import * as api from '../lib/api';
 
 function StatCard({ icon: Icon, label, value, sub, color }) {
@@ -21,25 +20,30 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
   );
 }
 
-function generateActivityData() {
+function buildActivityData(metrics) {
+  if (metrics.activity_24h?.length) return metrics.activity_24h;
+  const total = metrics.last_24h?.cases_created || 0;
+  const artifacts = metrics.last_24h?.artifacts_fetched || 0;
   const data = [];
   const now = new Date();
   for (let i = 23; i >= 0; i--) {
     const hour = new Date(now - i * 3600000);
     data.push({
       hour: hour.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false }),
-      cases: Math.floor(Math.random() * 4),
-      artifacts: Math.floor(Math.random() * 120 + 20),
+      cases: i < total ? 1 : 0,
+      artifacts: Math.round(artifacts / 24),
     });
   }
   return data;
 }
 
-function generateClaimTypeData(metrics) {
+function buildClaimTypeData(metrics) {
+  if (metrics.claim_type_counts) return metrics.claim_type_counts;
+  const total = metrics.total_cases_processed || 0;
   return [
-    { type: 'Findings', count: Math.round(metrics.total_cases_processed * 2.1) },
-    { type: 'Risk Signals', count: Math.round(metrics.total_cases_processed * 1.4) },
-    { type: 'Hypotheses', count: Math.round(metrics.total_cases_processed * 0.8) },
+    { type: 'Findings', count: Math.round(total * 2.1) },
+    { type: 'Risk Signals', count: Math.round(total * 1.4) },
+    { type: 'Hypotheses', count: Math.round(total * 0.8) },
   ];
 }
 
@@ -65,25 +69,52 @@ function ChartTooltip({ active, payload, label }) {
 
 export default function MetricsPage() {
   const [metrics, setMetrics] = useState(null);
-  const [activityData] = useState(generateActivityData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
         const data = await api.getMetrics();
         setMetrics(data);
-      } catch {
-        setMetrics(mockMetrics);
+      } catch (e) {
+        setError(e.message || 'Failed to load metrics');
+      } finally {
+        setLoading(false);
       }
     }
     load();
   }, []);
 
-  if (!metrics) {
-    return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading metrics...</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ height: 22, width: '15%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 8 }} className="skeleton-pulse" />
+        <div style={{ height: 14, width: '30%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 24 }} className="skeleton-pulse" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card" style={{ padding: 18 }}>
+              <div style={{ height: 32, width: '40%', background: 'var(--bg-hover)', borderRadius: 8, marginBottom: 12 }} className="skeleton-pulse" />
+              <div style={{ height: 28, width: '50%', background: 'var(--bg-hover)', borderRadius: 4 }} className="skeleton-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const claimData = generateClaimTypeData(metrics);
+  if (error) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <AlertTriangle size={20} style={{ color: 'var(--amber)', marginBottom: 8 }} />
+        <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>Unable to load metrics</div>
+        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{error}</div>
+      </div>
+    );
+  }
+
+  const activityData = buildActivityData(metrics);
+  const claimData = buildClaimTypeData(metrics);
 
   return (
     <div>

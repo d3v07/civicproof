@@ -587,8 +587,10 @@ class TestPublicMetrics:
         assert "last_24h" in body
 
     def test_metrics_with_data(self, mock_db):
-        # Seven execute calls: total cases, total artifacts, sources,
-        # total packs, passed packs, cases 24h, artifacts 24h, blocks 24h
+        timing_result = MagicMock()
+        timing_result.scalar.return_value = None
+        timing_result.all.return_value = [(12.5,), (15.0,), (18.3,)]
+
         mock_db.execute = AsyncMock(side_effect=[
             _scalar_result(47),   # total cases
             _scalar_result(1200), # total artifacts
@@ -598,6 +600,11 @@ class TestPublicMetrics:
             _scalar_result(3),    # cases 24h
             _scalar_result(892),  # artifacts 24h
             _scalar_result(1),    # blocks 24h
+            _scalar_result(100),  # total audits
+            _scalar_result(5),    # total blocks (hallucination)
+            timing_result,        # timing query
+            _scalar_result(500),  # total mentions
+            _scalar_result(450),  # resolved mentions
         ])
         app = self._app(mock_db)
         with TestClient(app) as client:
@@ -607,6 +614,9 @@ class TestPublicMetrics:
         assert body["total_cases_processed"] == 47
         assert body["sources_active"] == 6
         assert body["last_24h"]["cases_created"] == 3
+        assert body["hallucination_caught_rate"] == 0.05
+        assert body["median_tip_to_dossier_seconds"] == 15.0
+        assert body["entity_resolution_coverage"] == 0.9
 
 
 # ── ingest ────────────────────────────────────────────────────────────────────

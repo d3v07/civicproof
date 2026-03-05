@@ -19,6 +19,8 @@ from civicproof_common.hashing import content_hash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..connectors.doj import DOJConnector
+from ..connectors.sec_edgar import SECEdgarConnector
 from ..connectors.usaspending import USAspendingConnector
 
 logger = logging.getLogger(__name__)
@@ -143,22 +145,44 @@ class EvidenceRetrievalAgent:
                 "threshold_days": self._staleness.days,
             })
 
-        # Fetch from USAspending if missing or stale
-        if "usaspending" in manifest.missing_sources or "usaspending" in manifest.stale_sources:
-            fetched = await self._fetch_usaspending(entity_name, result)
-            if fetched:
-                refreshed = await self._query_artifacts(entity_name, entity_uei)
-                manifest.artifact_ids = [a.artifact_id for a in refreshed]
-                manifest.total_artifacts = len(refreshed)
-                manifest.artifacts_by_source = {}
-                for a in refreshed:
-                    manifest.artifacts_by_source[a.source] = (
-                        manifest.artifacts_by_source.get(a.source, 0) + 1
-                    )
-                if "usaspending" in manifest.missing_sources:
-                    manifest.missing_sources.remove("usaspending")
-                if "usaspending" in manifest.stale_sources:
-                    manifest.stale_sources.remove("usaspending")
+        # Fetch from each source if missing or stale
+        sources_to_fetch = set(manifest.missing_sources + manifest.stale_sources)
+        fetched_any = False
+
+        if "usaspending" in sources_to_fetch:
+            if await self._fetch_usaspending(entity_name, result):
+                fetched_any = True
+
+        if "sec_edgar" in sources_to_fetch:
+            if await self._fetch_sec_edgar(entity_name, result):
+                fetched_any = True
+
+        if "doj" in sources_to_fetch:
+            if await self._fetch_doj(entity_name, result):
+                fetched_any = True
+
+        if fetched_any:
+            refreshed = await self._query_artifacts(entity_name, entity_uei)
+            manifest.artifact_ids = [a.artifact_id for a in refreshed]
+            manifest.total_artifacts = len(refreshed)
+            manifest.artifacts_by_source = {}
+            for a in refreshed:
+                manifest.artifacts_by_source[a.source] = (
+                    manifest.artifacts_by_source.get(a.source, 0) + 1
+                )
+            # Update missing/stale lists
+            manifest.missing_sources = [
+                s for s in EXPECTED_SOURCES if s not in manifest.artifacts_by_source
+            ]
+            manifest.stale_sources = []
+            now = datetime.now(UTC)
+            for source in manifest.artifacts_by_source:
+                if manifest.freshness.get(source) and (now - manifest.freshness[source]) > self._staleness:
+                    manifest.stale_sources.append(source)
+            manifest.coverage_score = max(
+                0.0, len(manifest.artifacts_by_source) / len(EXPECTED_SOURCES)
+                - len(manifest.stale_sources) * 0.1
+            )
 
         return result
 
@@ -198,6 +222,91 @@ class EvidenceRetrievalAgent:
                 "action": "fetch_failed",
                 "source": "usaspending",
                 "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
+
+    async def _fetch_sec_edgar(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch SEC EDGAR filings and store as raw artifacts."""
+        connector = SECEdgarConnector()
+        stored = 0
+        try:
+            records = await connector.search_company_filings(entity_name, max_pages=2)
+            for record in records:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="sec_edgar",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/sec_edgar/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "sec_edgar",
+                "records_fetched": len(records),
+                "records_stored": stored,
+            })
+            logger.info("sec_edgar fetch entity=%s stored=%d", entity_name, stored)
+        except Exception as exc:
+            logger.warning("sec_edgar fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed", "source": "sec_edgar", "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
+
+    async def _fetch_doj(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch DOJ press releases mentioning entity and store as raw artifacts."""
+        connector = DOJConnector()
+        stored = 0
+        try:
+            records = await connector.search_fraud_releases(max_pages=2)
+            # Filter to only fraud-relevant releases that mention the entity
+            entity_lower = entity_name.lower()
+            relevant = [
+                r for r in records
+                if entity_lower in (r.get("title", "") + r.get("body", "")).lower()
+            ]
+            for record in relevant:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="doj",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/doj/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "doj",
+                "records_fetched": len(records),
+                "records_relevant": len(relevant),
+                "records_stored": stored,
+            })
+            logger.info("doj fetch entity=%s relevant=%d stored=%d", entity_name, len(relevant), stored)
+        except Exception as exc:
+            logger.warning("doj fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed", "source": "doj", "error": str(exc),
             })
         finally:
             await connector.close()

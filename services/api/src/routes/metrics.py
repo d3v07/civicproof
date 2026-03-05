@@ -16,6 +16,7 @@ from civicproof_common.db.models import (
     CaseModel,
     CasePackModel,
     DataSourceModel,
+    EntityMentionModel,
     RawArtifactModel,
 )
 from civicproof_common.db.session import get_session
@@ -117,6 +118,58 @@ async def get_public_metrics(
     )
     blocks_24h = blocks_24h_result.scalar() or 0
 
+    # Hallucination caught rate: audit blocks / total audit events
+    total_audits_result = await db.execute(
+        select(func.count()).select_from(AuditEventModel)
+    )
+    total_audits = total_audits_result.scalar() or 0
+    total_blocks_result = await db.execute(
+        select(func.count())
+        .select_from(AuditEventModel)
+        .where(AuditEventModel.policy_decision == "blocked")
+    )
+    total_blocks = total_blocks_result.scalar() or 0
+    hallucination_rate = total_blocks / total_audits if total_audits > 0 else 0.0
+
+    # Median tip-to-dossier: time from case creation to first case pack
+    timing_query = await db.execute(
+        select(
+            func.extract(
+                "epoch",
+                CasePackModel.generated_at - CaseModel.created_at,
+            )
+        )
+        .join(CaseModel, CasePackModel.case_id == CaseModel.case_id)
+        .order_by(
+            func.extract(
+                "epoch",
+                CasePackModel.generated_at - CaseModel.created_at,
+            )
+        )
+    )
+    durations = [row[0] for row in timing_query.all() if row[0] is not None and row[0] >= 0]
+    median_seconds = 0.0
+    if durations:
+        mid = len(durations) // 2
+        median_seconds = (
+            durations[mid]
+            if len(durations) % 2
+            else (durations[mid - 1] + durations[mid]) / 2
+        )
+
+    # Entity resolution coverage: resolved mentions / total mentions
+    total_mentions_result = await db.execute(
+        select(func.count()).select_from(EntityMentionModel)
+    )
+    total_mentions = total_mentions_result.scalar() or 0
+    resolved_mentions_result = await db.execute(
+        select(func.count())
+        .select_from(EntityMentionModel)
+        .where(EntityMentionModel.resolved_entity_id.is_not(None))
+    )
+    resolved_mentions = resolved_mentions_result.scalar() or 0
+    entity_coverage = resolved_mentions / total_mentions if total_mentions > 0 else 0.0
+
     logger.info(
         "metrics_served",
         case_id=None,
@@ -128,6 +181,9 @@ async def get_public_metrics(
 
     return PublicMetrics(
         audited_dossier_pass_rate=round(pass_rate, 4),
+        hallucination_caught_rate=round(hallucination_rate, 4),
+        median_tip_to_dossier_seconds=round(median_seconds, 2),
+        entity_resolution_coverage=round(entity_coverage, 4),
         total_cases_processed=total_cases,
         total_artifacts_ingested=total_artifacts,
         sources_active=sources_active,

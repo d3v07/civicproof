@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..connectors.doj import DOJConnector
+from ..connectors.oversight import OversightGovConnector
 from ..connectors.sec_edgar import SECEdgarConnector
 from ..connectors.usaspending import USAspendingConnector
 
@@ -159,6 +160,10 @@ class EvidenceRetrievalAgent:
 
         if "doj" in sources_to_fetch:
             if await self._fetch_doj(entity_name, result):
+                fetched_any = True
+
+        if "oversight_gov" in sources_to_fetch:
+            if await self._fetch_oversight(entity_name, result):
                 fetched_any = True
 
         if fetched_any:
@@ -307,6 +312,45 @@ class EvidenceRetrievalAgent:
             logger.warning("doj fetch failed for %s: %s", entity_name, exc)
             result.retrieval_log.append({
                 "action": "fetch_failed", "source": "doj", "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
+
+    async def _fetch_oversight(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch Oversight.gov IG reports mentioning entity."""
+        connector = OversightGovConnector()
+        stored = 0
+        try:
+            records = await connector.search_ig_reports(entity_name, max_pages=2)
+            for record in records:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="oversight_gov",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/oversight_gov/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "oversight_gov",
+                "records_fetched": len(records),
+                "records_stored": stored,
+            })
+            logger.info("oversight_gov fetch entity=%s stored=%d", entity_name, stored)
+        except Exception as exc:
+            logger.warning("oversight_gov fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed", "source": "oversight_gov", "error": str(exc),
             })
         finally:
             await connector.close()

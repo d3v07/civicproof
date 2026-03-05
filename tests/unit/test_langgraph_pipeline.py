@@ -309,20 +309,20 @@ class TestCostTracking:
         from graph.llm import _MODEL_COSTS
 
         assert "qwen/qwen-2.5-72b-instruct" in _MODEL_COSTS
-        assert "qwen/qwen-2.5-14b-instruct" in _MODEL_COSTS
+        assert "qwen/qwen-2.5-7b-instruct" in _MODEL_COSTS
         for model, costs in _MODEL_COSTS.items():
             assert "input" in costs
             assert "output" in costs
-            assert costs["input"] > 0
-            assert costs["output"] > 0
+            assert costs["input"] >= 0
+            assert costs["output"] >= 0
 
-    def test_14b_cheaper_than_72b(self):
+    def test_7b_cheaper_than_72b(self):
         from graph.llm import _MODEL_COSTS
 
-        c14 = _MODEL_COSTS["qwen/qwen-2.5-14b-instruct"]
+        c7 = _MODEL_COSTS["qwen/qwen-2.5-7b-instruct"]
         c72 = _MODEL_COSTS["qwen/qwen-2.5-72b-instruct"]
-        assert c14["input"] < c72["input"]
-        assert c14["output"] < c72["output"]
+        assert c7["input"] < c72["input"]
+        assert c7["output"] < c72["output"]
 
     def test_agent_llm_has_callbacks(self):
         try:
@@ -331,15 +331,154 @@ class TestCostTracking:
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
-                mock_settings.return_value.LLM_MODEL_LIGHTWEIGHT = "qwen/qwen-2.5-14b-instruct"
+                mock_settings.return_value.LLM_MODEL_LIGHTWEIGHT = "qwen/qwen-2.5-7b-instruct"
                 mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+                mock_settings.return_value.GEMINI_API_KEY = None
+                mock_settings.return_value.OLLAMA_BASE_URL = "http://localhost:11434"
+                mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
                 mock_settings.return_value.LLM_MAX_RETRIES = 2
 
                 llm = get_agent_llm("case_composer", case_id="test-case")
-                assert llm.callbacks is not None
-                assert any(isinstance(cb, CostTrackingCallback) for cb in llm.callbacks)
+                # Single provider: callbacks on the LLM directly
+                # CascadingLLM: callbacks on inner providers
+                from graph.llm import CascadingLLM
+                if isinstance(llm, CascadingLLM):
+                    inner = llm.providers[0]
+                    assert inner.callbacks is not None
+                    assert any(isinstance(cb, CostTrackingCallback) for cb in inner.callbacks)
+                else:
+                    assert llm.callbacks is not None
+                    assert any(isinstance(cb, CostTrackingCallback) for cb in llm.callbacks)
         except ImportError:
             pytest.skip("langchain-openai not installed")
+
+
+class TestCascadingLLM:
+    def test_cascading_llm_type(self):
+        from graph.llm import CascadingLLM
+        assert CascadingLLM is not None
+
+    def test_cascading_falls_through_on_error(self):
+        from graph.llm import CascadingLLM
+        from langchain_core.messages import AIMessage
+        from unittest.mock import MagicMock
+
+        provider_a = MagicMock()
+        provider_a._generate.side_effect = Exception("402 Payment Required")
+        provider_b = MagicMock()
+        mock_result = MagicMock()
+        mock_result.generations = [[MagicMock(text="ok")]]
+        provider_b._generate.return_value = mock_result
+
+        cascade = CascadingLLM(
+            providers=[provider_a, provider_b],
+            provider_names=["openrouter", "gemini"],
+        )
+        result = cascade._generate([])
+        provider_a._generate.assert_called_once()
+        provider_b._generate.assert_called_once()
+        assert result == mock_result
+
+    def test_cascading_uses_first_if_success(self):
+        from graph.llm import CascadingLLM
+        from unittest.mock import MagicMock
+
+        provider_a = MagicMock()
+        mock_result = MagicMock()
+        provider_a._generate.return_value = mock_result
+        provider_b = MagicMock()
+
+        cascade = CascadingLLM(
+            providers=[provider_a, provider_b],
+            provider_names=["openrouter", "gemini"],
+        )
+        result = cascade._generate([])
+        provider_a._generate.assert_called_once()
+        provider_b._generate.assert_not_called()
+
+    def test_cascading_raises_if_all_fail(self):
+        from graph.llm import CascadingLLM
+        from unittest.mock import MagicMock
+
+        provider_a = MagicMock()
+        provider_a._generate.side_effect = Exception("fail a")
+        provider_b = MagicMock()
+        provider_b._generate.side_effect = Exception("fail b")
+
+        cascade = CascadingLLM(
+            providers=[provider_a, provider_b],
+            provider_names=["a", "b"],
+        )
+        with pytest.raises(Exception, match="fail b"):
+            cascade._generate([])
+
+    @pytest.mark.asyncio
+    async def test_cascading_async_fallback(self):
+        from graph.llm import CascadingLLM
+        from unittest.mock import AsyncMock, MagicMock
+
+        provider_a = MagicMock()
+        provider_a._agenerate = AsyncMock(side_effect=Exception("timeout"))
+        provider_b = MagicMock()
+        mock_result = MagicMock()
+        provider_b._agenerate = AsyncMock(return_value=mock_result)
+
+        cascade = CascadingLLM(
+            providers=[provider_a, provider_b],
+            provider_names=["openrouter", "gemini"],
+        )
+        result = await cascade._agenerate([])
+        assert result == mock_result
+
+    def test_get_llm_no_providers_raises(self):
+        from unittest.mock import patch
+        from graph.llm import get_llm
+
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = None
+            mock_settings.return_value.GEMINI_API_KEY = None
+            mock_settings.return_value.OLLAMA_BASE_URL = "http://localhost:11434"
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            # Patch _build_ollama to return None (simulates unreachable)
+            with patch("graph.llm._build_ollama", return_value=None):
+                with pytest.raises(RuntimeError, match="No LLM providers configured"):
+                    get_llm()
+
+    def test_get_llm_single_provider_no_cascade(self):
+        from unittest.mock import patch, MagicMock
+        from graph.llm import get_llm, CascadingLLM
+
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = None
+            mock_settings.return_value.OLLAMA_BASE_URL = "http://localhost:11434"
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch("graph.llm._build_ollama", return_value=None):
+                llm = get_llm()
+                assert not isinstance(llm, CascadingLLM)
+
+    def test_get_llm_multiple_providers_cascades(self):
+        from unittest.mock import patch, MagicMock
+        from graph.llm import get_llm, CascadingLLM
+
+        mock_gemini = MagicMock()
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = "test-gemini"
+            mock_settings.return_value.VERTEX_AI_MODEL = "gemini-2.0-flash"
+            mock_settings.return_value.OLLAMA_BASE_URL = "http://localhost:11434"
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch("graph.llm._build_gemini", return_value=mock_gemini), \
+                 patch("graph.llm._build_ollama", return_value=None):
+                llm = get_llm()
+                assert isinstance(llm, CascadingLLM)
+                assert len(llm.providers) == 2
 
 
 class TestMCPServer:

@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     VLLM_BASE_URL: str = Field(default="http://localhost:8000/v1")
     VLLM_MODEL: str = Field(default="mistralai/Mistral-7B-Instruct-v0.2")
 
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
+    OLLAMA_MODEL: str = Field(default="qwen2.5:7b")
+
     SAM_GOV_API_KEY: str | None = Field(default=None)
     OPENFEC_API_KEY: str | None = Field(default=None)
 

@@ -8,5 +8,7 @@ opentelemetry-exporter-otlp-proto-grpc>=1.23.0
 langgraph>=1.0.0
 langchain-core>=0.3.0
 langchain-openai>=0.3.0
+langchain-google-genai>=4.0.0
+langchain-ollama>=1.0.0
 mcp>=1.0.0
 civicproof-common @ file://../packages/common

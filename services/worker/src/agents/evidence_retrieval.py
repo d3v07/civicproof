@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 STALENESS_THRESHOLD = timedelta(days=30)
 
 # Expected data sources for a complete investigation
-EXPECTED_SOURCES = ["usaspending", "doj", "sec_edgar", "oversight_gov"]
+EXPECTED_SOURCES = ["usaspending", "doj", "sec_edgar", "oversight_gov", "sam_gov", "openfec"]
 
 
 @dataclass
@@ -164,6 +164,14 @@ class EvidenceRetrievalAgent:
 
         if "oversight_gov" in sources_to_fetch:
             if await self._fetch_oversight(entity_name, result):
+                fetched_any = True
+
+        if "sam_gov" in sources_to_fetch:
+            if await self._fetch_sam_gov(entity_name, result):
+                fetched_any = True
+
+        if "openfec" in sources_to_fetch:
+            if await self._fetch_openfec(entity_name, result):
                 fetched_any = True
 
         if fetched_any:
@@ -351,6 +359,107 @@ class EvidenceRetrievalAgent:
             logger.warning("oversight_gov fetch failed for %s: %s", entity_name, exc)
             result.retrieval_log.append({
                 "action": "fetch_failed", "source": "oversight_gov", "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
+
+    async def _fetch_sam_gov(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch SAM.gov contract opportunities mentioning entity."""
+        from civicproof_common.config import get_settings
+        settings = get_settings()
+        if not settings.SAM_GOV_API_KEY:
+            result.retrieval_log.append({
+                "action": "skipped", "source": "sam_gov", "reason": "no_api_key",
+            })
+            return 0
+        from ..connectors.sam_gov import SAMGovConnector
+        connector = SAMGovConnector(api_key=settings.SAM_GOV_API_KEY)
+        stored = 0
+        try:
+            from ..connectors.base import FetchParams
+            fetch_result = await connector.fetch_page(FetchParams(
+                query={"keyword": entity_name}, page_size=50,
+            ))
+            for record in fetch_result.artifacts:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="sam_gov",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/sam_gov/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "sam_gov",
+                "records_fetched": len(fetch_result.artifacts),
+                "records_stored": stored,
+            })
+            logger.info("sam_gov fetch entity=%s stored=%d", entity_name, stored)
+        except Exception as exc:
+            logger.warning("sam_gov fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed", "source": "sam_gov", "error": str(exc),
+            })
+        finally:
+            await connector.close()
+        return stored
+
+    async def _fetch_openfec(
+        self, entity_name: str, result: EvidenceRetrievalResult,
+    ) -> int:
+        """Fetch OpenFEC contributions by employer matching entity."""
+        from civicproof_common.config import get_settings
+        settings = get_settings()
+        if not settings.OPENFEC_API_KEY:
+            result.retrieval_log.append({
+                "action": "skipped", "source": "openfec", "reason": "no_api_key",
+            })
+            return 0
+        from ..connectors.openfec import OpenFECConnector
+        connector = OpenFECConnector(api_key=settings.OPENFEC_API_KEY)
+        stored = 0
+        try:
+            from ..connectors.base import FetchParams
+            fetch_result = await connector.fetch_page(FetchParams(
+                query={"endpoint": "schedules/schedule_a", "employer": entity_name},
+                page_size=50,
+            ))
+            for record in fetch_result.artifacts:
+                raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
+                c_hash = content_hash(raw_bytes)
+                canonical_url = connector.canonical_url(record)
+                artifact = RawArtifactModel(
+                    artifact_id=str(uuid.uuid4()),
+                    source="openfec",
+                    source_url=canonical_url,
+                    content_hash=c_hash,
+                    storage_path=f"artifacts/openfec/{c_hash[:16]}.json",
+                    metadata_=record,
+                )
+                self._db.add(artifact)
+                stored += 1
+            if stored:
+                await self._db.flush()
+            result.fetches_triggered.append({
+                "source": "openfec",
+                "records_fetched": len(fetch_result.artifacts),
+                "records_stored": stored,
+            })
+            logger.info("openfec fetch entity=%s stored=%d", entity_name, stored)
+        except Exception as exc:
+            logger.warning("openfec fetch failed for %s: %s", entity_name, exc)
+            result.retrieval_log.append({
+                "action": "fetch_failed", "source": "openfec", "error": str(exc),
             })
         finally:
             await connector.close()

@@ -242,13 +242,24 @@ async def run_worker() -> None:
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
 
+    consecutive_errors = 0
     try:
         while not stop_event.is_set():
-            result = await redis_client.blpop([QUEUE_KEY], timeout=POLL_TIMEOUT)  # type: ignore[misc]
-            if result is None:
-                continue
-            _, raw = result
-            await _process_message(redis_client, raw)
+            try:
+                result = await redis_client.blpop([QUEUE_KEY], timeout=POLL_TIMEOUT)  # type: ignore[misc]
+                consecutive_errors = 0
+                if result is None:
+                    continue
+                _, raw = result
+                await _process_message(redis_client, raw)
+            except (ConnectionError, OSError, aioredis.ConnectionError) as exc:
+                consecutive_errors += 1
+                backoff = min(2 ** consecutive_errors, 30)
+                _stdlib_logger.warning(
+                    "redis connection error (attempt %d, retry in %ds): %s",
+                    consecutive_errors, backoff, exc,
+                )
+                await asyncio.sleep(backoff)
     finally:
         await redis_client.aclose()
         _stdlib_logger.info("worker stopped")

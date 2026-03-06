@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     PII_REDACTION_ENABLED: bool = Field(default=True)
     EVIDENCE_RETENTION_DAYS: int = Field(default=365)
 
-    WORKER_HEALTH_PORT: int = Field(default=8070)
+    WORKER_HEALTH_PORT: int = Field(default=8080)
 
     ENABLE_GRAPH_BUILDER: bool = Field(default=True)
     ENABLE_ANOMALY_DETECTOR: bool = Field(default=True)

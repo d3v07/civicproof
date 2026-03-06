@@ -98,6 +98,23 @@ resource "google_service_networking_connection" "private_vpc" {
   reserved_peering_ranges = [google_compute_global_address.private_ip.name]
 }
 
+# ── Memorystore Redis ─────────────────────────────────────────
+
+resource "google_redis_instance" "main" {
+  name           = "civicproof-redis"
+  tier           = "BASIC"
+  memory_size_gb = 1
+  region         = var.region
+
+  authorized_network = google_compute_network.vpc.id
+
+  redis_version = "REDIS_7_0"
+
+  redis_configs = {
+    maxmemory-policy = "allkeys-lru"
+  }
+}
+
 # ── Cloud Storage (Artifact Lake) ──────────────────────────────
 
 resource "google_storage_bucket" "artifacts" {
@@ -226,6 +243,13 @@ resource "google_secret_manager_secret" "openfec_api_key" {
   }
 }
 
+resource "google_secret_manager_secret" "gemini_api_key" {
+  secret_id = "gemini-api-key"
+  replication {
+    auto {}
+  }
+}
+
 # ── IAM Service Accounts ──────────────────────────────────────
 
 resource "google_service_account" "api" {
@@ -288,6 +312,31 @@ resource "google_secret_manager_secret_iam_member" "gateway_openrouter" {
   member    = "serviceAccount:${google_service_account.gateway.email}"
 }
 
+# Worker SA: Secret Manager accessor for LLM + data source keys
+resource "google_secret_manager_secret_iam_member" "worker_openrouter" {
+  secret_id = google_secret_manager_secret.openrouter_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.worker.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "worker_gemini" {
+  secret_id = google_secret_manager_secret.gemini_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.worker.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "worker_sam_gov" {
+  secret_id = google_secret_manager_secret.sam_gov_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.worker.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "worker_openfec" {
+  secret_id = google_secret_manager_secret.openfec_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.worker.email}"
+}
+
 # ── Cloud Run Services ─────────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "api" {
@@ -321,6 +370,11 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
+      }
+
+      env {
+        name  = "REDIS_URL"
+        value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}/0"
       }
 
       resources {
@@ -369,6 +423,11 @@ resource "google_cloud_run_v2_service" "worker" {
       env {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
+      }
+
+      env {
+        name  = "REDIS_URL"
+        value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}/0"
       }
 
       resources {

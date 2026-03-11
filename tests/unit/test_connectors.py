@@ -5,6 +5,7 @@ import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
@@ -305,6 +306,28 @@ class TestDOJConnector:
         await c.close()
         c._client.aclose.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_graceful_on_401(self):
+        c = DOJConnector()
+        resp_401 = httpx.Response(401, request=httpx.Request("GET", "https://x"))
+        err = httpx.HTTPStatusError("", request=resp_401.request, response=resp_401)
+        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, side_effect=err):
+            result = await c.fetch_page(FetchParams())
+        assert result.artifacts == []
+        assert result.total_count == 0
+        assert result.has_next is False
+
+    @pytest.mark.asyncio
+    async def test_graceful_on_404(self):
+        c = DOJConnector()
+        resp_404 = httpx.Response(404, request=httpx.Request("GET", "https://x"))
+        err = httpx.HTTPStatusError("", request=resp_404.request, response=resp_404)
+        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, side_effect=err):
+            result = await c.fetch_page(FetchParams())
+        assert result.artifacts == []
+        assert result.total_count == 0
+        assert result.has_next is False
+
 
 # ---------------------------------------------------------------------------
 # Oversight.gov
@@ -444,6 +467,34 @@ class TestOversightGovConnector:
         c._client.is_closed = False
         await c.close()
         c._client.aclose.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_graceful_on_404(self):
+        c = OversightGovConnector()
+        resp_404 = httpx.Response(404, request=httpx.Request("GET", "https://x"))
+        err = httpx.HTTPStatusError("", request=resp_404.request, response=resp_404)
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, side_effect=err,
+        ):
+            result = await c.fetch_page(FetchParams())
+        assert result.artifacts == []
+        assert result.total_count == 0
+        assert result.has_next is False
+
+    @pytest.mark.asyncio
+    async def test_graceful_on_403(self):
+        c = OversightGovConnector()
+        resp_403 = httpx.Response(403, request=httpx.Request("GET", "https://x"))
+        err = httpx.HTTPStatusError("", request=resp_403.request, response=resp_403)
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, side_effect=err,
+        ):
+            result = await c.fetch_page(FetchParams())
+        assert result.artifacts == []
+        assert result.total_count == 0
+        assert result.has_next is False
 
 
 # ---------------------------------------------------------------------------

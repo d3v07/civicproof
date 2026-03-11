@@ -8,8 +8,6 @@ import json
 import os
 import sys
 
-import pytest
-
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
 if _WORKER_DIR not in sys.path:
     sys.path.insert(0, _WORKER_DIR)
@@ -18,7 +16,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.handlers.parse import _extract_text, _flatten_json_to_text
+from src.handlers.parse import _extract_text, _flatten_json_to_text  # noqa: E402
 
 
 class TestFlattenJsonToText:

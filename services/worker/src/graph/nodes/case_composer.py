@@ -41,7 +41,10 @@ def _format_risk_signals(signals: list[dict]) -> str:
         return "No risk signals detected."
     parts = []
     for s in signals:
-        parts.append(f"- [{s.get('severity', 'unknown').upper()}] {s.get('signal_type', '')}: {s.get('description', '')}")
+        parts.append(
+            f"- [{s.get('severity', 'unknown').upper()}] "
+            f"{s.get('signal_type', '')}: {s.get('description', '')}"
+        )
     return "\n".join(parts)
 
 
@@ -80,7 +83,10 @@ async def case_composer_node(state: CivicProofState) -> dict[str, Any]:
 
     # Step 2: LLM-enhanced narrative (title + summary + executive overview)
     try:
-        llm = get_agent_llm("case_composer", temperature=0.4, max_tokens=4096, case_id=state.get("case_id", ""))
+        llm = get_agent_llm(
+            "case_composer", temperature=0.4,
+            max_tokens=4096, case_id=state.get("case_id", ""),
+        )
         prompt = (
             f"Entity: {entity['canonical_name']}\n"
             f"Risk Signals:\n{_format_risk_signals(risk_signals)}\n"

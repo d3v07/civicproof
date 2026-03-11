@@ -84,9 +84,17 @@ class TestGraphBuilderNode:
         mock_db.execute = AsyncMock(return_value=mock_execute_result)
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
-            patch("src.graph.nodes.graph_builder.get_agent_llm") as mock_llm_factory,
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
+            patch(
+                "src.graph.nodes.graph_builder.get_agent_llm",
+            ) as _mock_llm_factory,
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
             result = await graph_builder_node({
@@ -111,9 +119,17 @@ class TestGraphBuilderNode:
         mock_builder.build = AsyncMock(return_value=build_result)
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
-            patch("src.graph.nodes.graph_builder.get_agent_llm") as mock_llm_factory,
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
+            patch(
+                "src.graph.nodes.graph_builder.get_agent_llm",
+            ) as _mock_llm_factory,
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
             result = await graph_builder_node({
@@ -124,7 +140,7 @@ class TestGraphBuilderNode:
                 "pipeline_log": [],
             })
 
-        mock_llm_factory.assert_not_called()
+        _mock_llm_factory.assert_not_called()
         assert result["graph_result"]["llm_relationships"] == []
 
     @pytest.mark.asyncio
@@ -149,15 +165,29 @@ class TestGraphBuilderNode:
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='[{"source_entity": "ACME CORP", "target_entity": "Small Biz LLC", '
-                    '"rel_type": "contractor_subcontractor", "evidence_excerpt": "Subcontractor: Small Biz LLC", '
-                    '"confidence": 0.9}]'
+            content=(
+                '[{"source_entity": "ACME CORP", '
+                '"target_entity": "Small Biz LLC", '
+                '"rel_type": "contractor_subcontractor", '
+                '"evidence_excerpt": '
+                '"Subcontractor: Small Biz LLC", '
+                '"confidence": 0.9}]'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
-            patch("src.graph.nodes.graph_builder.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
+            patch(
+                "src.graph.nodes.graph_builder.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
             result = await graph_builder_node({
@@ -193,9 +223,18 @@ class TestGraphBuilderNode:
         mock_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM down"))
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
-            patch("src.graph.nodes.graph_builder.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
+            patch(
+                "src.graph.nodes.graph_builder.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
             result = await graph_builder_node({
@@ -206,7 +245,6 @@ class TestGraphBuilderNode:
                 "pipeline_log": [],
             })
 
-        # LLM failure is caught, result still returned with co-occurrence graph
         assert result["graph_result"]["edges_added"] == 2
         assert result["graph_result"]["llm_relationships"] == []
 
@@ -217,25 +255,35 @@ class TestGraphBuilderNode:
         mock_builder = AsyncMock()
         mock_builder.build = AsyncMock(return_value=build_result)
 
-        # Artifact with very short metadata
         mock_artifact = MagicMock()
         mock_artifact.artifact_id = "a1"
         mock_artifact.source = "usaspending"
-        mock_artifact.metadata_ = {"title": "X"}  # < 50 chars
+        mock_artifact.metadata_ = {"title": "X"}
 
         mock_execute_result = MagicMock()
-        mock_execute_result.scalars = MagicMock(return_value=iter([mock_artifact]))
+        mock_execute_result.scalars = MagicMock(
+            return_value=iter([mock_artifact]),
+        )
         mock_db.execute = AsyncMock(return_value=mock_execute_result)
 
         mock_llm = AsyncMock()
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
-            patch("src.graph.nodes.graph_builder.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
+            patch(
+                "src.graph.nodes.graph_builder.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
-            result = await graph_builder_node({
+            _result = await graph_builder_node({
                 "case_id": "c-1",
                 "primary_entity": _make_entity_dict(),
                 "related_entities": [],
@@ -243,7 +291,6 @@ class TestGraphBuilderNode:
                 "pipeline_log": [],
             })
 
-        # LLM should NOT be invoked for short docs
         mock_llm.ainvoke.assert_not_called()
 
     @pytest.mark.asyncio
@@ -254,8 +301,14 @@ class TestGraphBuilderNode:
         mock_builder.build = AsyncMock(return_value=build_result)
 
         with (
-            patch("src.graph.nodes.graph_builder.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.graph_builder.GraphBuilderAgent", return_value=mock_builder),
+            patch(
+                "src.graph.nodes.graph_builder.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.graph_builder.GraphBuilderAgent",
+                return_value=mock_builder,
+            ),
         ):
             from src.graph.nodes.graph_builder import graph_builder_node
             result = await graph_builder_node({
@@ -291,14 +344,29 @@ class TestAnomalyDetectorNode:
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='[{"hypothesis": "Possible sole-source pattern", "confidence": 0.5, '
-                    '"supporting_signals": ["sole_source_concentration"], "reasoning": "test"}]'
+            content=(
+                '[{"hypothesis": '
+                '"Possible sole-source pattern", '
+                '"confidence": 0.5, '
+                '"supporting_signals": '
+                '["sole_source_concentration"], '
+                '"reasoning": "test"}]'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.anomaly_detector.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.anomaly_detector.AnomalyDetectorAgent", return_value=mock_detector),
-            patch("src.graph.nodes.anomaly_detector.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.anomaly_detector.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.anomaly_detector.AnomalyDetectorAgent",
+                return_value=mock_detector,
+            ),
+            patch(
+                "src.graph.nodes.anomaly_detector.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.anomaly_detector import anomaly_detector_node
             result = await anomaly_detector_node({
@@ -331,9 +399,17 @@ class TestAnomalyDetectorNode:
         mock_detector.detect = AsyncMock(return_value=detect_result)
 
         with (
-            patch("src.graph.nodes.anomaly_detector.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.anomaly_detector.AnomalyDetectorAgent", return_value=mock_detector),
-            patch("src.graph.nodes.anomaly_detector.get_agent_llm") as mock_llm_factory,
+            patch(
+                "src.graph.nodes.anomaly_detector.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.anomaly_detector.AnomalyDetectorAgent",
+                return_value=mock_detector,
+            ),
+            patch(
+                "src.graph.nodes.anomaly_detector.get_agent_llm",
+            ) as _mock_llm_factory,
         ):
             from src.graph.nodes.anomaly_detector import anomaly_detector_node
             result = await anomaly_detector_node({
@@ -344,7 +420,7 @@ class TestAnomalyDetectorNode:
                 "pipeline_log": [],
             })
 
-        mock_llm_factory.assert_not_called()
+        _mock_llm_factory.assert_not_called()
         assert result["risk_signals"] == []
 
     @pytest.mark.asyncio
@@ -363,12 +439,23 @@ class TestAnomalyDetectorNode:
         mock_detector.detect = AsyncMock(return_value=detect_result)
 
         mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM error"))
+        mock_llm.ainvoke = AsyncMock(
+            side_effect=RuntimeError("LLM error"),
+        )
 
         with (
-            patch("src.graph.nodes.anomaly_detector.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.anomaly_detector.AnomalyDetectorAgent", return_value=mock_detector),
-            patch("src.graph.nodes.anomaly_detector.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.anomaly_detector.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.anomaly_detector.AnomalyDetectorAgent",
+                return_value=mock_detector,
+            ),
+            patch(
+                "src.graph.nodes.anomaly_detector.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.anomaly_detector import anomaly_detector_node
             result = await anomaly_detector_node({
@@ -379,9 +466,10 @@ class TestAnomalyDetectorNode:
                 "pipeline_log": [],
             })
 
-        # Only deterministic signal, no LLM hypotheses
         assert len(result["risk_signals"]) == 1
-        assert result["risk_signals"][0]["signal_type"] == "sole_source_concentration"
+        assert result["risk_signals"][0]["signal_type"] == (
+            "sole_source_concentration"
+        )
 
     @pytest.mark.asyncio
     async def test_high_confidence_hypothesis_is_high_severity(self):
@@ -400,14 +488,29 @@ class TestAnomalyDetectorNode:
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='[{"hypothesis": "Strong bid rigging pattern", "confidence": 0.85, '
-                    '"supporting_signals": ["sole_source_concentration"], "reasoning": "Strong correlation"}]'
+            content=(
+                '[{"hypothesis": '
+                '"Strong bid rigging pattern", '
+                '"confidence": 0.85, '
+                '"supporting_signals": '
+                '["sole_source_concentration"], '
+                '"reasoning": "Strong correlation"}]'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.anomaly_detector.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.anomaly_detector.AnomalyDetectorAgent", return_value=mock_detector),
-            patch("src.graph.nodes.anomaly_detector.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.anomaly_detector.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.anomaly_detector.AnomalyDetectorAgent",
+                return_value=mock_detector,
+            ),
+            patch(
+                "src.graph.nodes.anomaly_detector.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.anomaly_detector import anomaly_detector_node
             result = await anomaly_detector_node({
@@ -424,7 +527,9 @@ class TestAnomalyDetectorNode:
 
     @pytest.mark.asyncio
     async def test_preserves_pipeline_log(self):
-        detect_result = _AnomalyDetectionResult(risk_signals=[], composite_risk_score=0.0)
+        detect_result = _AnomalyDetectionResult(
+            risk_signals=[], composite_risk_score=0.0,
+        )
         mock_db = AsyncMock()
         mock_execute_result = MagicMock()
         mock_execute_result.scalars = MagicMock(return_value=iter([]))
@@ -434,8 +539,14 @@ class TestAnomalyDetectorNode:
         mock_detector.detect = AsyncMock(return_value=detect_result)
 
         with (
-            patch("src.graph.nodes.anomaly_detector.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.anomaly_detector.AnomalyDetectorAgent", return_value=mock_detector),
+            patch(
+                "src.graph.nodes.anomaly_detector.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.anomaly_detector.AnomalyDetectorAgent",
+                return_value=mock_detector,
+            ),
         ):
             from src.graph.nodes.anomaly_detector import anomaly_detector_node
             result = await anomaly_detector_node({

@@ -55,7 +55,9 @@ class _ArtifactManifest:
     total_artifacts: int = 3
     artifacts_by_source: dict[str, int] = field(default_factory=lambda: {"usaspending": 3})
     stale_sources: list[str] = field(default_factory=list)
-    missing_sources: list[str] = field(default_factory=lambda: ["doj", "sec_edgar", "oversight_gov"])
+    missing_sources: list[str] = field(
+        default_factory=lambda: ["doj", "sec_edgar", "oversight_gov"]
+    )
     artifact_ids: list[str] = field(default_factory=lambda: ["a1", "a2", "a3"])
     freshness: dict = field(default_factory=dict)
     coverage_score: float = 0.25
@@ -107,8 +109,14 @@ class TestEntityResolverNode:
         mock_resolver.resolve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -134,8 +142,14 @@ class TestEntityResolverNode:
         mock_resolver.resolve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -159,9 +173,17 @@ class TestEntityResolverNode:
         mock_resolver.resolve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
-            patch("src.graph.nodes.entity_resolver.get_agent_llm") as mock_llm_factory,
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
+            patch(
+                "src.graph.nodes.entity_resolver.get_agent_llm",
+            ) as mock_llm_factory,
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -186,14 +208,28 @@ class TestEntityResolverNode:
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='{"entity_id": "ent-001", "canonical_name": "ACME CORP", '
-                    '"confidence": 0.85, "reasoning": "matched UEI", "merged_aliases": ["Acme Inc"]}'
+            content=(
+                '{"entity_id": "ent-001", '
+                '"canonical_name": "ACME CORP", '
+                '"confidence": 0.85, '
+                '"reasoning": "matched UEI", '
+                '"merged_aliases": ["Acme Inc"]}'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
-            patch("src.graph.nodes.entity_resolver.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
+            patch(
+                "src.graph.nodes.entity_resolver.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -218,12 +254,23 @@ class TestEntityResolverNode:
         mock_resolver.resolve = AsyncMock(return_value=mock_result)
 
         mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM timeout"))
+        mock_llm.ainvoke = AsyncMock(
+            side_effect=RuntimeError("LLM timeout"),
+        )
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
-            patch("src.graph.nodes.entity_resolver.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
+            patch(
+                "src.graph.nodes.entity_resolver.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -251,8 +298,14 @@ class TestEvidenceRetrievalNode:
         mock_retriever.retrieve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.evidence_retrieval.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.evidence_retrieval.EvidenceRetrievalAgent", return_value=mock_retriever),
+            patch(
+                "src.graph.nodes.evidence_retrieval.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.evidence_retrieval.EvidenceRetrievalAgent",
+                return_value=mock_retriever,
+            ),
         ):
             from src.graph.nodes.evidence_retrieval import evidence_retrieval_node
             result = await evidence_retrieval_node({
@@ -270,15 +323,25 @@ class TestEvidenceRetrievalNode:
     @pytest.mark.asyncio
     async def test_llm_strategy_skipped_when_no_gaps(self):
         manifest = _ArtifactManifest(missing_sources=[], stale_sources=[])
-        mock_result = _EvidenceRetrievalResult(manifest=manifest, retrieval_log=[])
+        mock_result = _EvidenceRetrievalResult(
+            manifest=manifest, retrieval_log=[],
+        )
         mock_db = AsyncMock()
         mock_retriever = AsyncMock()
         mock_retriever.retrieve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.evidence_retrieval.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.evidence_retrieval.EvidenceRetrievalAgent", return_value=mock_retriever),
-            patch("src.graph.nodes.evidence_retrieval.get_agent_llm") as mock_llm_factory,
+            patch(
+                "src.graph.nodes.evidence_retrieval.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.evidence_retrieval.EvidenceRetrievalAgent",
+                return_value=mock_retriever,
+            ),
+            patch(
+                "src.graph.nodes.evidence_retrieval.get_agent_llm",
+            ) as mock_llm_factory,
         ):
             from src.graph.nodes.evidence_retrieval import evidence_retrieval_node
             result = await evidence_retrieval_node({
@@ -292,21 +355,37 @@ class TestEvidenceRetrievalNode:
 
     @pytest.mark.asyncio
     async def test_llm_strategy_runs_when_gaps_exist(self):
-        manifest = _ArtifactManifest(missing_sources=["doj", "sec_edgar"])
-        mock_result = _EvidenceRetrievalResult(manifest=manifest, retrieval_log=[])
+        manifest = _ArtifactManifest(
+            missing_sources=["doj", "sec_edgar"],
+        )
+        mock_result = _EvidenceRetrievalResult(
+            manifest=manifest, retrieval_log=[],
+        )
         mock_db = AsyncMock()
         mock_retriever = AsyncMock()
         mock_retriever.retrieve = AsyncMock(return_value=mock_result)
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='[{"source": "doj", "query": "ACME fraud", "priority": 4, "reasoning": "test"}]'
+            content=(
+                '[{"source": "doj", "query": "ACME fraud", '
+                '"priority": 4, "reasoning": "test"}]'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.evidence_retrieval.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.evidence_retrieval.EvidenceRetrievalAgent", return_value=mock_retriever),
-            patch("src.graph.nodes.evidence_retrieval.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.evidence_retrieval.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.evidence_retrieval.EvidenceRetrievalAgent",
+                return_value=mock_retriever,
+            ),
+            patch(
+                "src.graph.nodes.evidence_retrieval.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.evidence_retrieval import evidence_retrieval_node
             result = await evidence_retrieval_node({
@@ -320,18 +399,31 @@ class TestEvidenceRetrievalNode:
     @pytest.mark.asyncio
     async def test_llm_strategy_failure_uses_fallback(self):
         manifest = _ArtifactManifest(missing_sources=["doj"])
-        mock_result = _EvidenceRetrievalResult(manifest=manifest, retrieval_log=[])
+        mock_result = _EvidenceRetrievalResult(
+            manifest=manifest, retrieval_log=[],
+        )
         mock_db = AsyncMock()
         mock_retriever = AsyncMock()
         mock_retriever.retrieve = AsyncMock(return_value=mock_result)
 
         mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM error"))
+        mock_llm.ainvoke = AsyncMock(
+            side_effect=RuntimeError("LLM error"),
+        )
 
         with (
-            patch("src.graph.nodes.evidence_retrieval.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.evidence_retrieval.EvidenceRetrievalAgent", return_value=mock_retriever),
-            patch("src.graph.nodes.evidence_retrieval.get_agent_llm", return_value=mock_llm),
+            patch(
+                "src.graph.nodes.evidence_retrieval.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.evidence_retrieval.EvidenceRetrievalAgent",
+                return_value=mock_retriever,
+            ),
+            patch(
+                "src.graph.nodes.evidence_retrieval.get_agent_llm",
+                return_value=mock_llm,
+            ),
         ):
             from src.graph.nodes.evidence_retrieval import evidence_retrieval_node
             result = await evidence_retrieval_node({
@@ -374,14 +466,30 @@ class TestCaseComposerNode:
         mock_db = AsyncMock()
         mock_llm = AsyncMock()
         mock_llm.ainvoke = AsyncMock(return_value=MagicMock(
-            content='{"title": "LLM Title", "summary": "LLM summary.", "hypotheses": []}'
+            content=(
+                '{"title": "LLM Title", '
+                '"summary": "LLM summary.", '
+                '"hypotheses": []}'
+            )
         ))
 
         with (
-            patch("src.graph.nodes.case_composer.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.graph.nodes.case_composer.get_agent_llm", return_value=mock_llm),
-            patch("src.agents.case_composer.CaseComposerAgent") as MockComposer,
-            patch("src.graph.nodes.anomaly_detector._build_awards_data", new_callable=AsyncMock, return_value=[]),
+            patch(
+                "src.graph.nodes.case_composer.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.graph.nodes.case_composer.get_agent_llm",
+                return_value=mock_llm,
+            ),
+            patch(
+                "src.agents.case_composer.CaseComposerAgent",
+            ) as MockComposer,
+            patch(
+                "src.graph.nodes.anomaly_detector._build_awards_data",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             MockComposer.return_value.compose = MagicMock(return_value=mock_composition)
             MockComposer.return_value._deterministic_claim_id = MagicMock(return_value="det-id")
@@ -418,13 +526,27 @@ class TestCaseComposerNode:
 
         mock_db = AsyncMock()
         mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM down"))
+        mock_llm.ainvoke = AsyncMock(
+            side_effect=RuntimeError("LLM down"),
+        )
 
         with (
-            patch("src.graph.nodes.case_composer.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.graph.nodes.case_composer.get_agent_llm", return_value=mock_llm),
-            patch("src.agents.case_composer.CaseComposerAgent") as MockComposer,
-            patch("src.graph.nodes.anomaly_detector._build_awards_data", new_callable=AsyncMock, return_value=[]),
+            patch(
+                "src.graph.nodes.case_composer.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.graph.nodes.case_composer.get_agent_llm",
+                return_value=mock_llm,
+            ),
+            patch(
+                "src.agents.case_composer.CaseComposerAgent",
+            ) as MockComposer,
+            patch(
+                "src.graph.nodes.anomaly_detector._build_awards_data",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             MockComposer.return_value.compose = MagicMock(return_value=mock_composition)
             from src.graph.nodes.case_composer import case_composer_node
@@ -457,16 +579,28 @@ class TestAuditorGateNode:
         mock_audit_result.summary = "APPROVED"
 
         with (
-            patch("src.graph.nodes.auditor_gate.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.auditor.AuditorGate") as MockGate,
+            patch(
+                "src.graph.nodes.auditor_gate.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.auditor.AuditorGate",
+            ) as MockGate,
         ):
-            MockGate.return_value.audit = MagicMock(return_value=mock_audit_result)
+            MockGate.return_value.audit = MagicMock(
+                return_value=mock_audit_result,
+            )
             from src.graph.nodes.auditor_gate import auditor_gate_node
             result = await auditor_gate_node({
                 "case_pack": {
-                    "claims": [{"claim_id": "c1", "statement": "Risk signal.",
-                                "claim_type": "risk_signal", "confidence": 0.7,
-                                "citation_ids": [], "artifact_ids": []}],
+                    "claims": [{
+                        "claim_id": "c1",
+                        "statement": "Risk signal.",
+                        "claim_type": "risk_signal",
+                        "confidence": 0.7,
+                        "citation_ids": [],
+                        "artifact_ids": [],
+                    }],
                     "sources_used": ["usaspending"],
                     "summary": "Test", "title": "Test",
                 },
@@ -488,12 +622,20 @@ class TestAuditorGateNode:
 
         mock_audit_result = MagicMock()
         mock_audit_result.approved = False
-        mock_audit_result.violations = ["CITATION_REQUIRED: no citation", "ACCUSATORY: banned"]
+        mock_audit_result.violations = [
+            "CITATION_REQUIRED: no citation",
+            "ACCUSATORY: banned",
+        ]
         mock_audit_result.summary = "BLOCKED"
 
         with (
-            patch("src.graph.nodes.auditor_gate.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.auditor.AuditorGate") as MockGate,
+            patch(
+                "src.graph.nodes.auditor_gate.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.auditor.AuditorGate",
+            ) as MockGate,
         ):
             MockGate.return_value.audit = MagicMock(return_value=mock_audit_result)
             from src.graph.nodes.auditor_gate import auditor_gate_node
@@ -529,16 +671,28 @@ class TestAuditorGateNode:
         mock_audit_result.summary = "APPROVED"
 
         with (
-            patch("src.graph.nodes.auditor_gate.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.auditor.AuditorGate") as MockGate,
+            patch(
+                "src.graph.nodes.auditor_gate.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.auditor.AuditorGate",
+            ) as MockGate,
         ):
-            MockGate.return_value.audit = MagicMock(return_value=mock_audit_result)
+            MockGate.return_value.audit = MagicMock(
+                return_value=mock_audit_result,
+            )
             from src.graph.nodes.auditor_gate import auditor_gate_node
             result = await auditor_gate_node({
                 "case_pack": {
-                    "claims": [{"claim_id": "c1", "statement": "$5M awards.",
-                                "claim_type": "finding", "confidence": 1.0,
-                                "citation_ids": ["a1"], "artifact_ids": ["a1"]}],
+                    "claims": [{
+                        "claim_id": "c1",
+                        "statement": "$5M awards.",
+                        "claim_type": "finding",
+                        "confidence": 1.0,
+                        "citation_ids": ["a1"],
+                        "artifact_ids": ["a1"],
+                    }],
                     "sources_used": ["usaspending"],
                     "summary": "Test", "title": "Test",
                 },
@@ -547,12 +701,11 @@ class TestAuditorGateNode:
             })
 
         assert result["audit_approved"] is True
-        # Verify AuditorGate was called with correct artifact_hashes
         call_kwargs = MockGate.call_args[1]
         assert call_kwargs["artifact_hashes"] == {"a1": "hash123"}
 
 
-# ── Pipeline Log Contracts ────────────────────────────────────────────────
+# ── Pipeline Log Contracts ────────────────────────────────────────
 
 class TestPipelineLogContract:
     @pytest.mark.asyncio
@@ -564,8 +717,14 @@ class TestPipelineLogContract:
         mock_resolver.resolve = AsyncMock(return_value=mock_result)
 
         with (
-            patch("src.graph.nodes.entity_resolver.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.entity_resolver.EntityResolverAgent", return_value=mock_resolver),
+            patch(
+                "src.graph.nodes.entity_resolver.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.entity_resolver.EntityResolverAgent",
+                return_value=mock_resolver,
+            ),
         ):
             from src.graph.nodes.entity_resolver import entity_resolver_node
             result = await entity_resolver_node({
@@ -591,18 +750,29 @@ class TestPipelineLogContract:
         mock_audit_result.summary = "APPROVED"
 
         with (
-            patch("src.graph.nodes.auditor_gate.async_session_context", return_value=_mock_async_ctx(mock_db)),
-            patch("src.agents.auditor.AuditorGate") as MockGate,
+            patch(
+                "src.graph.nodes.auditor_gate.async_session_context",
+                return_value=_mock_async_ctx(mock_db),
+            ),
+            patch(
+                "src.agents.auditor.AuditorGate",
+            ) as MockGate,
         ):
-            MockGate.return_value.audit = MagicMock(return_value=mock_audit_result)
+            MockGate.return_value.audit = MagicMock(
+                return_value=mock_audit_result,
+            )
             from src.graph.nodes.auditor_gate import auditor_gate_node
             result = await auditor_gate_node({
                 "case_pack": {
-                    "claims": [], "sources_used": ["usaspending"],
-                    "summary": "Test", "title": "Test",
+                    "claims": [],
+                    "sources_used": ["usaspending"],
+                    "summary": "Test",
+                    "title": "Test",
                 },
                 "artifact_ids": [],
-                "pipeline_log": [{"step": "previous", "status": "ok"}],
+                "pipeline_log": [
+                    {"step": "previous", "status": "ok"},
+                ],
             })
 
         assert len(result["pipeline_log"]) == 2

@@ -104,7 +104,10 @@ async def anomaly_detector_node(state: CivicProofState) -> dict[str, Any]:
     # Step 2: LLM interprets signals and generates cross-signal hypotheses
     if result.risk_signals:
         try:
-            llm = get_agent_llm("anomaly_detector", temperature=0.3, max_tokens=2048, case_id=state.get("case_id", ""))
+            llm = get_agent_llm(
+                "anomaly_detector", temperature=0.3,
+                max_tokens=2048, case_id=state.get("case_id", ""),
+            )
             prompt = (
                 f"Deterministic anomaly detection found these risk signals:\n"
                 f"{_format_risk_signals(result.risk_signals)}\n\n"

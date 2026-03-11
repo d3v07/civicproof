@@ -6,15 +6,13 @@ DeterminismEvaluator, SyntheticFraudGenerator, EvalHarness, check_gates.
 from __future__ import annotations
 
 import pytest
-
-from civicproof_eval.config import RELEASE_GATES, ReleaseGates, check_gates
+from civicproof_eval.config import RELEASE_GATES, check_gates
 from civicproof_eval.evaluators.determinism import DeterminismEvaluator
 from civicproof_eval.evaluators.grounding import GroundingEvaluator
 from civicproof_eval.evaluators.hallucination import HallucinationEvaluator
 from civicproof_eval.evaluators.retrieval import RetrievalEvaluator
 from civicproof_eval.generators.synthetic_fraud import SyntheticFraudGenerator
 from civicproof_eval.harness import EvalHarness
-
 
 # ── Grounding Evaluator ─────────────────────────────────────────────────
 

@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,7 +19,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from civicproof_common.schemas.events import EventEnvelope, EventType
+from civicproof_common.schemas.events import EventEnvelope, EventType  # noqa: E402
 
 
 def _make_envelope(event_type: EventType, payload: dict, **kwargs) -> EventEnvelope:
@@ -75,8 +74,14 @@ class TestHandleArtifactIngested:
         )
 
         with (
-            patch("src.handlers.ingest.get_session", side_effect=lambda: _mock_get_session(mock_db)),
-            patch("src.handlers.ingest.build_object_store", return_value=mock_store),
+            patch(
+                "src.handlers.ingest.get_session",
+                side_effect=lambda: _mock_get_session(mock_db),
+            ),
+            patch(
+                "src.handlers.ingest.build_object_store",
+                return_value=mock_store,
+            ),
             patch("src.handlers.ingest.IdempotencyGuard", return_value=mock_guard),
             patch("src.handlers.ingest.content_hash", return_value="hash123"),
             patch("src.handlers.ingest.verify_hash", return_value=True),
@@ -170,8 +175,14 @@ class TestHandleArtifactIngested:
         )
 
         with (
-            patch("src.handlers.ingest.get_session", side_effect=lambda: _mock_get_session(mock_db)),
-            patch("src.handlers.ingest.build_object_store", return_value=mock_store),
+            patch(
+                "src.handlers.ingest.get_session",
+                side_effect=lambda: _mock_get_session(mock_db),
+            ),
+            patch(
+                "src.handlers.ingest.build_object_store",
+                return_value=mock_store,
+            ),
             patch("src.handlers.ingest.IdempotencyGuard", return_value=mock_guard),
             patch("src.handlers.ingest.content_hash", return_value="hash123"),
         ):
@@ -227,7 +238,12 @@ class TestHandleParseRequested:
 
         envelope = _make_envelope(
             EventType.ARTIFACT_PARSE_REQUESTED,
-            {"artifact_id": "art-001", "source": "test", "storage_path": "x", "doc_type": "unknown"},
+            {
+                "artifact_id": "art-001",
+                "source": "test",
+                "storage_path": "x",
+                "doc_type": "unknown",
+            },
         )
 
         with patch("src.handlers.parse.IdempotencyGuard", return_value=mock_guard):
@@ -264,7 +280,12 @@ class TestHandleParseRequested:
 
         envelope = _make_envelope(
             EventType.ARTIFACT_PARSE_REQUESTED,
-            {"artifact_id": "art-001", "source": "test", "storage_path": "x/y", "doc_type": "unknown"},
+            {
+                "artifact_id": "art-001",
+                "source": "test",
+                "storage_path": "x/y",
+                "doc_type": "unknown",
+            },
         )
 
         with (
@@ -298,8 +319,14 @@ class TestHandleNormalizeRequested:
         )
 
         with (
-            patch("src.handlers.normalize.get_session", side_effect=lambda: _mock_get_session(mock_db)),
-            patch("src.handlers.normalize.IdempotencyGuard", return_value=mock_guard),
+            patch(
+                "src.handlers.normalize.get_session",
+                side_effect=lambda: _mock_get_session(mock_db),
+            ),
+            patch(
+                "src.handlers.normalize.IdempotencyGuard",
+                return_value=mock_guard,
+            ),
         ):
             from src.handlers.normalize import handle_normalize_requested
             await handle_normalize_requested(envelope, mock_redis)
@@ -355,8 +382,14 @@ class TestHandleNormalizeRequested:
         )
 
         with (
-            patch("src.handlers.normalize.get_session", side_effect=lambda: _mock_get_session(mock_db)),
-            patch("src.handlers.normalize.IdempotencyGuard", return_value=mock_guard),
+            patch(
+                "src.handlers.normalize.get_session",
+                side_effect=lambda: _mock_get_session(mock_db),
+            ),
+            patch(
+                "src.handlers.normalize.IdempotencyGuard",
+                return_value=mock_guard,
+            ),
         ):
             from src.handlers.normalize import handle_normalize_requested
             await handle_normalize_requested(envelope, mock_redis)
@@ -383,8 +416,14 @@ class TestHandleNormalizeRequested:
         )
 
         with (
-            patch("src.handlers.normalize.get_session", side_effect=lambda: _mock_get_session(mock_db)),
-            patch("src.handlers.normalize.IdempotencyGuard", return_value=mock_guard),
+            patch(
+                "src.handlers.normalize.get_session",
+                side_effect=lambda: _mock_get_session(mock_db),
+            ),
+            patch(
+                "src.handlers.normalize.IdempotencyGuard",
+                return_value=mock_guard,
+            ),
         ):
             from src.handlers.normalize import handle_normalize_requested
             await handle_normalize_requested(envelope, mock_redis)

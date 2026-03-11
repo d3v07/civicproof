@@ -79,11 +79,16 @@ async def entity_resolver_node(state: CivicProofState) -> dict[str, Any]:
 
     if needs_disambiguation and len(result.related_entities) > 0:
         try:
-            llm = get_agent_llm("entity_resolver", temperature=0.1, case_id=state.get("case_id", ""))
+            llm = get_agent_llm(
+                "entity_resolver", temperature=0.1,
+                case_id=state.get("case_id", ""),
+            )
             prompt = (
                 f"Given these candidate entities from federal databases:\n"
                 f"{_format_candidates(result)}\n\n"
-                f"And this seed input: {json.dumps({k: v for k, v in seed_input.items() if k != 'tip_text'})}\n"
+                f"And this seed input: {json.dumps(
+                    {k: v for k, v in seed_input.items() if k != 'tip_text'}
+                )}\n"
             )
             if has_tip:
                 prompt += f"Tip text: {seed_input['tip_text'][:500]}\n"

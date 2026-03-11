@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -15,7 +15,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.agents.entity_resolver import EntityResolverAgent, ResolvedEntity, EntityResolutionResult
+from src.agents.entity_resolver import EntityResolverAgent, ResolvedEntity  # noqa: E402
 
 
 def _mock_entity_row(**overrides):

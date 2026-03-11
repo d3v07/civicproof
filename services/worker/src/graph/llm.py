@@ -160,7 +160,9 @@ class CascadingLLM(BaseChatModel):
         last_exc = None
         for i, provider in enumerate(self.providers):
             try:
-                return await provider._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs)
+                return await provider._agenerate(
+                    messages, stop=stop, run_manager=run_manager, **kwargs,
+                )
             except Exception as exc:
                 name = self.provider_names[i] if i < len(self.provider_names) else f"provider_{i}"
                 logger.warning("llm_fallback provider=%s error=%s", name, exc)
@@ -197,7 +199,10 @@ def get_llm(
         names.append(f"ollama:{settings.OLLAMA_MODEL}")
 
     if not providers:
-        logger.error("no_llm_providers_available — check OPENROUTER_API_KEY, GEMINI_API_KEY, or Ollama")
+        logger.error(
+            "no_llm_providers_available — check OPENROUTER_API_KEY,"
+            " GEMINI_API_KEY, or Ollama",
+        )
         raise RuntimeError(
             "No LLM providers configured. Set OPENROUTER_API_KEY, GEMINI_API_KEY, "
             "or run Ollama locally."

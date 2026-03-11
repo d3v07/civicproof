@@ -4,8 +4,6 @@ from __future__ import annotations
 import os
 import sys
 
-import pytest
-
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
 if _WORKER_DIR not in sys.path:
     sys.path.insert(0, _WORKER_DIR)
@@ -14,11 +12,10 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.agents.case_composer import (
+from src.agents.case_composer import (  # noqa: E402
     CaseComposerAgent,
     ComposedCasePack,
     ComposedClaim,
-    CompositionResult,
 )
 
 
@@ -70,7 +67,11 @@ class TestCaseComposerCompose:
     def test_risk_signals_added_as_claims(self):
         agent = CaseComposerAgent()
         signals = [
-            {"signal_type": "sole_source", "score": 0.7, "description": "High sole-source", "severity": "medium"},
+            {
+                "signal_type": "sole_source", "score": 0.7,
+                "description": "High sole-source",
+                "severity": "medium",
+            },
         ]
         result = agent.compose(
             case_id="c-1",

@@ -1,15 +1,14 @@
 """API route tests — covers cases, search, metrics, ingest, health, and PDF endpoints."""
 from __future__ import annotations
 
-import sys
 import os
+import sys
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -18,14 +17,13 @@ _API_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "services", "api"
 if _API_SRC not in sys.path:
     sys.path.insert(0, _API_SRC)
 
-from civicproof_common.db.session import get_session
-from civicproof_common.schemas.cases import CaseStatus
-from routes import cases as cases_router_mod
-from routes import search as search_router_mod
-from routes import metrics as metrics_router_mod
-from routes import ingest as ingest_router_mod
-from routes import health as health_router_mod
-
+from civicproof_common.db.session import get_session  # noqa: E402
+from civicproof_common.schemas.cases import CaseStatus  # noqa: E402
+from routes import cases as cases_router_mod  # noqa: E402
+from routes import health as health_router_mod  # noqa: E402
+from routes import ingest as ingest_router_mod  # noqa: E402
+from routes import metrics as metrics_router_mod  # noqa: E402
+from routes import search as search_router_mod  # noqa: E402
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -241,7 +239,7 @@ class TestListCases:
 
 class TestCreateCase:
     def _app_with_no_existing(self, mock_db):
-        # execute called: 1) existing cases check (scalars returns empty), 2) flush done via add+flush
+        # existing cases check (scalars→empty), then flush via add+flush
         existing_result = _scalars_all_result([])
         mock_db.execute = AsyncMock(return_value=existing_result)
 
@@ -671,13 +669,20 @@ class TestIngestRun:
 
 class TestPdfRenderer:
     def test_plaintext_fallback(self):
-        from renderers.pdf import render_case_pack_pdf, _render_plaintext_fallback
+        from renderers.pdf import _render_plaintext_fallback
 
         result = _render_plaintext_fallback(
             case_id="c-001",
             title="Test Case",
-            claims=[{"claim_type": "finding", "confidence": 0.9, "statement": "Test claim", "claim_id": "cl-001"}],
-            citations=[{"claim_id": "cl-001", "artifact_id": "art-001", "excerpt": "Some text"}],
+            claims=[{
+                "claim_type": "finding", "confidence": 0.9,
+                "statement": "Test claim", "claim_id": "cl-001",
+            }],
+            citations=[{
+                "claim_id": "cl-001",
+                "artifact_id": "art-001",
+                "excerpt": "Some text",
+            }],
             audit_events=[],
             pack_hash="abc123",
             generated_at=None,

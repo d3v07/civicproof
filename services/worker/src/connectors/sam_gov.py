@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from connectors.base import BaseConnector, FetchParams, FetchResult
+from .base import BaseConnector, FetchParams, FetchResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +48,22 @@ class SAMGovConnector(BaseConnector):
 
     async def fetch_page(self, params: FetchParams) -> FetchResult:
         """Fetch a page of contract opportunities from SAM.gov."""
+        from datetime import UTC, datetime, timedelta
+        now = datetime.now(UTC)
+        # SAM.gov enforces max 1-year date range; use rolling 1-year window
+        posted_to = params.until.strftime("%m/%d/%Y") if params.until else now.strftime("%m/%d/%Y")
+        one_year_before_to = now - timedelta(days=365)
+        if params.since and params.since > one_year_before_to:
+            posted_from = params.since.strftime("%m/%d/%Y")
+        else:
+            posted_from = one_year_before_to.strftime("%m/%d/%Y")
         query_params: dict[str, Any] = {
             "api_key": self._api_key,
             "limit": min(params.page_size, self.MAX_PAGE_SIZE),
             "offset": (params.page - 1) * min(params.page_size, self.MAX_PAGE_SIZE),
-            "postedFrom": (
-                params.since.strftime("%m/%d/%Y")
-                if params.since
-                else "01/01/2020"
-            ),
+            "postedFrom": posted_from,
+            "postedTo": posted_to,
         }
-
-        if params.until:
-            query_params["postedTo"] = params.until.strftime("%m/%d/%Y")
 
         # Merge any extra query filters
         if params.query:

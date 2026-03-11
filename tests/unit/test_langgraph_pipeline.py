@@ -10,9 +10,8 @@ _WORKER_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "services", "w
 if _WORKER_SRC not in sys.path:
     sys.path.insert(0, _WORKER_SRC)
 
-from graph.state import CivicProofState
-from graph.pipeline import route_after_entity_resolution, route_after_audit
-
+from graph.pipeline import route_after_audit, route_after_entity_resolution  # noqa: E402
+from graph.state import CivicProofState  # noqa: E402
 
 # ── Routing functions ────────────────────────────────────────────────────────
 
@@ -100,8 +99,9 @@ class TestLLMFactory:
     def test_get_llm_returns_chat_openai(self):
         """Verify factory produces a ChatOpenAI pointed at OpenRouter."""
         try:
-            from graph.llm import get_llm
             from unittest.mock import patch
+
+            from graph.llm import get_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -117,8 +117,9 @@ class TestLLMFactory:
 
     def test_model_override(self):
         try:
-            from graph.llm import get_llm
             from unittest.mock import patch
+
+            from graph.llm import get_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -197,7 +198,11 @@ class TestSystemPrompts:
     def test_anomaly_detector_prompt_forbids_accusations(self):
         from graph.nodes.anomaly_detector import SYSTEM_PROMPT
 
-        assert "never accusations" in SYSTEM_PROMPT.lower() or "never accus" in SYSTEM_PROMPT.lower()
+        prompt_lower = SYSTEM_PROMPT.lower()
+        assert (
+            "never accusations" in prompt_lower
+            or "never accus" in prompt_lower
+        )
         assert "hypothesis" in SYSTEM_PROMPT.lower()
 
     def test_anomaly_detector_knows_fraud_patterns(self):
@@ -234,8 +239,9 @@ class TestAgentModelRouting:
 
     def test_get_agent_llm_lightweight(self):
         try:
-            from graph.llm import get_agent_llm
             from unittest.mock import patch
+
+            from graph.llm import get_agent_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -250,8 +256,9 @@ class TestAgentModelRouting:
 
     def test_get_agent_llm_primary(self):
         try:
-            from graph.llm import get_agent_llm
             from unittest.mock import patch
+
+            from graph.llm import get_agent_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -266,8 +273,9 @@ class TestAgentModelRouting:
 
     def test_get_agent_llm_unknown_defaults_to_primary(self):
         try:
-            from graph.llm import get_agent_llm
             from unittest.mock import patch
+
+            from graph.llm import get_agent_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -282,8 +290,9 @@ class TestAgentModelRouting:
 
     def test_lightweight_caps_max_tokens(self):
         try:
-            from graph.llm import get_agent_llm
             from unittest.mock import patch
+
+            from graph.llm import get_agent_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -315,7 +324,7 @@ class TestCostTracking:
 
         assert "qwen/qwen-2.5-72b-instruct" in _MODEL_COSTS
         assert "qwen/qwen-2.5-7b-instruct" in _MODEL_COSTS
-        for model, costs in _MODEL_COSTS.items():
+        for _model, costs in _MODEL_COSTS.items():
             assert "input" in costs
             assert "output" in costs
             assert costs["input"] >= 0
@@ -331,8 +340,9 @@ class TestCostTracking:
 
     def test_agent_llm_has_callbacks(self):
         try:
-            from graph.llm import get_agent_llm, CostTrackingCallback
             from unittest.mock import patch
+
+            from graph.llm import CostTrackingCallback, get_agent_llm
 
             with patch("graph.llm.get_settings") as mock_settings:
                 mock_settings.return_value.LLM_MODEL_PRIMARY = "qwen/qwen-2.5-72b-instruct"
@@ -364,9 +374,9 @@ class TestCascadingLLM:
         assert CascadingLLM is not None
 
     def test_cascading_falls_through_on_error(self):
-        from graph.llm import CascadingLLM
-        from langchain_core.messages import AIMessage
         from unittest.mock import MagicMock
+
+        from graph.llm import CascadingLLM
 
         provider_a = MagicMock()
         provider_a._generate.side_effect = Exception("402 Payment Required")
@@ -385,8 +395,9 @@ class TestCascadingLLM:
         assert result == mock_result
 
     def test_cascading_uses_first_if_success(self):
-        from graph.llm import CascadingLLM
         from unittest.mock import MagicMock
+
+        from graph.llm import CascadingLLM
 
         provider_a = MagicMock()
         mock_result = MagicMock()
@@ -397,13 +408,14 @@ class TestCascadingLLM:
             providers=[provider_a, provider_b],
             provider_names=["openrouter", "gemini"],
         )
-        result = cascade._generate([])
+        _result = cascade._generate([])
         provider_a._generate.assert_called_once()
         provider_b._generate.assert_not_called()
 
     def test_cascading_raises_if_all_fail(self):
-        from graph.llm import CascadingLLM
         from unittest.mock import MagicMock
+
+        from graph.llm import CascadingLLM
 
         provider_a = MagicMock()
         provider_a._generate.side_effect = Exception("fail a")
@@ -419,8 +431,9 @@ class TestCascadingLLM:
 
     @pytest.mark.asyncio
     async def test_cascading_async_fallback(self):
-        from graph.llm import CascadingLLM
         from unittest.mock import AsyncMock, MagicMock
+
+        from graph.llm import CascadingLLM
 
         provider_a = MagicMock()
         provider_a._agenerate = AsyncMock(side_effect=Exception("timeout"))
@@ -437,6 +450,7 @@ class TestCascadingLLM:
 
     def test_get_llm_no_providers_raises(self):
         from unittest.mock import patch
+
         from graph.llm import get_llm
 
         with patch("graph.llm.get_settings") as mock_settings:
@@ -452,8 +466,9 @@ class TestCascadingLLM:
                     get_llm()
 
     def test_get_llm_single_provider_no_cascade(self):
-        from unittest.mock import patch, MagicMock
-        from graph.llm import get_llm, CascadingLLM
+        from unittest.mock import patch
+
+        from graph.llm import CascadingLLM, get_llm
 
         with patch("graph.llm.get_settings") as mock_settings:
             mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
@@ -467,8 +482,9 @@ class TestCascadingLLM:
                 assert not isinstance(llm, CascadingLLM)
 
     def test_get_llm_multiple_providers_cascades(self):
-        from unittest.mock import patch, MagicMock
-        from graph.llm import get_llm, CascadingLLM
+        from unittest.mock import MagicMock, patch
+
+        from graph.llm import CascadingLLM, get_llm
 
         mock_gemini = MagicMock()
         with patch("graph.llm.get_settings") as mock_settings:

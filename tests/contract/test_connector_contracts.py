@@ -24,12 +24,11 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.connectors.base import FetchParams
-from src.connectors.doj import DOJConnector
-from src.connectors.oversight import OversightGovConnector
-from src.connectors.sec_edgar import SECEdgarConnector
-from src.connectors.usaspending import USAspendingConnector
-
+from src.connectors.base import FetchParams  # noqa: E402
+from src.connectors.doj import DOJConnector  # noqa: E402
+from src.connectors.oversight import OversightGovConnector  # noqa: E402
+from src.connectors.sec_edgar import SECEdgarConnector  # noqa: E402
+from src.connectors.usaspending import USAspendingConnector  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures: minimal upstream response shapes per API documentation
@@ -78,7 +77,10 @@ DOJ_RESPONSE = {
     "results": [
         {
             "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "title": "Defense Contractor to Pay $19.5 Million to Settle False Claims Act Allegations",
+            "title": (
+                "Defense Contractor to Pay $19.5 Million"
+                " to Settle False Claims Act Allegations"
+            ),
             "date": "2024-06-15T12:00:00Z",
             "body": (
                 "The Department of Justice announced today that XYZ Corp has agreed to pay "
@@ -296,17 +298,19 @@ class TestOversightGovContract:
         mock_resp = MagicMock()
         mock_resp.json.return_value = OVERSIGHT_GOV_RESPONSE
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
         with unittest.mock.patch.object(
-            c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
         ):
             result = await c.fetch_page(FetchParams())
 
         art = result.artifacts[0]
         required_keys = {
-            "source", "report_id", "title", "agency", "report_type",
-            "published_date", "summary", "recommendations_count",
-            "monetary_findings",
+            "source", "report_id", "title", "agency",
+            "report_type", "published_date", "summary",
+            "recommendations_count", "monetary_findings",
         }
         assert required_keys.issubset(set(art.keys())), (
             f"Missing keys: {required_keys - set(art.keys())}"
@@ -318,9 +322,11 @@ class TestOversightGovContract:
         mock_resp = MagicMock()
         mock_resp.json.return_value = OVERSIGHT_GOV_RESPONSE
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
         with unittest.mock.patch.object(
-            c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
         ):
             result = await c.fetch_page(FetchParams())
 
@@ -332,13 +338,15 @@ class TestOversightGovContract:
         mock_resp = MagicMock()
         mock_resp.json.return_value = OVERSIGHT_GOV_RESPONSE
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
         with unittest.mock.patch.object(
-            c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
         ):
             result = await c.fetch_page(FetchParams())
 
         assert result.total_count == 1
 
 
-import unittest.mock
+import unittest.mock  # noqa: E402

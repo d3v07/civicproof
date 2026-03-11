@@ -16,7 +16,6 @@ from civicproof_common.anomalies.rules import (
     detect_sole_source_concentration,
 )
 
-
 # ── AnomalyResult dataclass ─────────────────────────────────────
 
 

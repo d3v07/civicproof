@@ -5,8 +5,6 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
 if _WORKER_DIR not in sys.path:
     sys.path.insert(0, _WORKER_DIR)
@@ -15,7 +13,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.graph.pipeline import route_after_audit, route_after_entity_resolution
+from src.graph.pipeline import route_after_audit, route_after_entity_resolution  # noqa: E402
 
 
 class TestRouteAfterEntityResolution:
@@ -80,7 +78,8 @@ class TestBuildGraph:
         assert "anomaly_detector" not in node_names
 
     def test_graph_builder_only(self):
-        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True)):
+        settings = self._make_settings(graph_builder=True)
+        with patch("src.graph.pipeline.get_settings", return_value=settings):
             from src.graph.pipeline import build_graph
             graph = build_graph()
 
@@ -90,7 +89,8 @@ class TestBuildGraph:
         assert "anomaly_detector" not in node_names
 
     def test_anomaly_detector_only(self):
-        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(anomaly_detector=True)):
+        settings = self._make_settings(anomaly_detector=True)
+        with patch("src.graph.pipeline.get_settings", return_value=settings):
             from src.graph.pipeline import build_graph
             graph = build_graph()
 
@@ -100,7 +100,10 @@ class TestBuildGraph:
         assert "graph_builder" not in node_names
 
     def test_both_optional_nodes(self):
-        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True, anomaly_detector=True)):
+        settings = self._make_settings(
+            graph_builder=True, anomaly_detector=True,
+        )
+        with patch("src.graph.pipeline.get_settings", return_value=settings):
             from src.graph.pipeline import build_graph
             graph = build_graph()
 
@@ -110,18 +113,28 @@ class TestBuildGraph:
         assert "anomaly_detector" in node_names
 
     def test_full_6_node_pipeline_has_all_nodes(self):
-        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True, anomaly_detector=True)):
+        settings = self._make_settings(
+            graph_builder=True, anomaly_detector=True,
+        )
+        with patch("src.graph.pipeline.get_settings", return_value=settings):
             from src.graph.pipeline import build_graph
             graph = build_graph()
 
         compiled = graph.compile()
         node_names = set(compiled.get_graph().nodes.keys())
-        expected = {"entity_resolver", "evidence_retrieval", "graph_builder", "anomaly_detector", "case_composer", "auditor_gate"}
+        expected = {
+            "entity_resolver", "evidence_retrieval",
+            "graph_builder", "anomaly_detector",
+            "case_composer", "auditor_gate",
+        }
         # __start__ and __end__ are internal langgraph nodes
         assert expected.issubset(node_names)
 
     def test_full_pipeline_edge_order(self):
-        with patch("src.graph.pipeline.get_settings", return_value=self._make_settings(graph_builder=True, anomaly_detector=True)):
+        settings = self._make_settings(
+            graph_builder=True, anomaly_detector=True,
+        )
+        with patch("src.graph.pipeline.get_settings", return_value=settings):
             from src.graph.pipeline import build_graph
             graph = build_graph()
 

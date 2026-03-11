@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass, field
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
 if _WORKER_DIR not in sys.path:
@@ -16,7 +13,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.agents.graph_builder import GraphBuilderAgent, GraphBuildResult
+from src.agents.graph_builder import GraphBuilderAgent, GraphBuildResult  # noqa: E402
 
 
 class TestSanitizeMentionText:

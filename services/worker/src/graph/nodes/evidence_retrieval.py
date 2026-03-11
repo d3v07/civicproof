@@ -18,12 +18,17 @@ SYSTEM_PROMPT = (
     "You are a federal data source expert for investigative research. "
     "You know what each data source returns and what search terms work best.\n\n"
     "Available sources:\n"
-    "- usaspending: Federal contracts/grants by recipient name. Best for award amounts, agencies, competition data.\n"
-    "- sam_gov: Contract opportunities. Best for active solicitations, set-asides.\n"
-    "- sec_edgar: SEC filings (10-K, 10-Q, 8-K). Best for publicly traded companies.\n"
+    "- usaspending: Federal contracts/grants by recipient name. "
+    "Best for award amounts, agencies, competition data.\n"
+    "- sam_gov: Contract opportunities. "
+    "Best for active solicitations, set-asides.\n"
+    "- sec_edgar: SEC filings (10-K, 10-Q, 8-K). "
+    "Best for publicly traded companies.\n"
     "- doj: DOJ press releases on fraud cases. Best for enforcement actions.\n"
-    "- openfec: Political committees and campaign contributions. Best for political donation links.\n"
-    "- oversight_gov: Inspector General reports. Best for agency-level audit findings.\n\n"
+    "- openfec: Political committees and campaign contributions. "
+    "Best for political donation links.\n"
+    "- oversight_gov: Inspector General reports. "
+    "Best for agency-level audit findings.\n\n"
     "Plan queries based on entity type and likely fraud patterns. "
     "Never fabricate data — only plan search queries.\n"
     "Return ONLY valid JSON — no markdown fences."
@@ -31,18 +36,29 @@ SYSTEM_PROMPT = (
 
 
 async def evidence_retrieval_node(state: CivicProofState) -> dict[str, Any]:
+    import redis.asyncio as aioredis
+    from civicproof_common.config import get_settings
+    from civicproof_common.rate_limiter import RateLimiter
+
     from ...agents.evidence_retrieval import EvidenceRetrievalAgent
 
     entity = state["primary_entity"]
 
+    settings = get_settings()
+    redis_client = aioredis.from_url(settings.REDIS_URL)
+    rate_limiter = RateLimiter(redis_client)
+
     # Step 1: Existing deterministic retrieval (always runs)
-    async with async_session_context() as db:
-        retriever = EvidenceRetrievalAgent(db)
-        result = await retriever.retrieve(
-            entity_id=entity["entity_id"],
-            entity_name=entity["canonical_name"],
-            entity_uei=entity.get("uei"),
-        )
+    try:
+        async with async_session_context() as db:
+            retriever = EvidenceRetrievalAgent(db, rate_limiter=rate_limiter)
+            result = await retriever.retrieve(
+                entity_id=entity["entity_id"],
+                entity_name=entity["canonical_name"],
+                entity_uei=entity.get("uei"),
+            )
+    finally:
+        await redis_client.aclose()
 
     manifest = result.manifest
     strategy_log = []
@@ -50,7 +66,10 @@ async def evidence_retrieval_node(state: CivicProofState) -> dict[str, Any]:
     # Step 2: LLM plans additional search strategy for missing/stale sources
     if manifest.missing_sources or manifest.stale_sources:
         try:
-            llm = get_agent_llm("evidence_retrieval", temperature=0.2, max_tokens=2048, case_id=state.get("case_id", ""))
+            llm = get_agent_llm(
+                "evidence_retrieval", temperature=0.2,
+                max_tokens=2048, case_id=state.get("case_id", ""),
+            )
             prompt = (
                 f"Entity: {entity['canonical_name']}\n"
                 f"Type: {entity.get('entity_type', 'vendor')}\n"
@@ -76,8 +95,11 @@ async def evidence_retrieval_node(state: CivicProofState) -> dict[str, Any]:
             )
         except Exception as exc:
             logger.warning("LLM search strategy failed, using defaults: %s", exc)
-            strategy_log = [{"source": s, "query": entity["canonical_name"],
-                            "priority": 3, "reasoning": "fallback"} for s in manifest.missing_sources]
+            strategy_log = [
+                {"source": s, "query": entity["canonical_name"],
+                 "priority": 3, "reasoning": "fallback"}
+                for s in manifest.missing_sources
+            ]
 
     return {
         "artifact_ids": manifest.artifact_ids,

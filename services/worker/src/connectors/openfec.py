@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from connectors.base import BaseConnector, FetchParams, FetchResult
+from .base import BaseConnector, FetchParams, FetchResult
 
 logger = logging.getLogger(__name__)
 

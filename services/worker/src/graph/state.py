@@ -21,7 +21,7 @@ class CivicProofState(TypedDict, total=False):
     related_entities: list[dict[str, Any]]
     resolution_log: list[dict[str, Any]]
 
-    # ── Evidence Retrieval output ────────────────────────
+    # ── Evidence Retrieval output ──────────────────────
     artifact_ids: list[str]
     sources_used: list[str]
     coverage_score: float

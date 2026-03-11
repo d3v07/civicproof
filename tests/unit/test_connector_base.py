@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,8 +16,13 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.connectors.base import BaseConnector, FetchParams, FetchResult, IngestRunResult
-from src.connectors.usaspending import USAspendingConnector
+from src.connectors.base import (  # noqa: E402
+    BaseConnector,
+    FetchParams,
+    FetchResult,
+    IngestRunResult,
+)
+from src.connectors.usaspending import USAspendingConnector  # noqa: E402
 
 
 class TestFetchParams:
@@ -132,7 +136,10 @@ class TestUSAspendingConnector:
         }
         mock_response.content = b"{}"
 
-        with patch.object(c, "_rate_limited_post", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(
+            c, "_rate_limited_post",
+            new_callable=AsyncMock, return_value=mock_response,
+        ):
             result = await c.fetch_page(FetchParams(
                 query={"recipient_search_text": ["ACME"]},
             ))
@@ -153,7 +160,10 @@ class TestUSAspendingConnector:
         }
         mock_response.content = b"{}"
 
-        with patch.object(c, "_rate_limited_post", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(
+            c, "_rate_limited_post",
+            new_callable=AsyncMock, return_value=mock_response,
+        ):
             result = await c.fetch_page(FetchParams(page=1))
 
         assert result.has_next is True

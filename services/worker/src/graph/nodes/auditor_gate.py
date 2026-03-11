@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from civicproof_common.db.session import async_session_context
 from civicproof_common.db.models import RawArtifactModel
+from civicproof_common.db.session import async_session_context
 from sqlalchemy import select
 
 from ..state import CivicProofState

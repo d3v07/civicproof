@@ -8,8 +8,6 @@ from __future__ import annotations
 import os
 import sys
 
-import pytest
-
 _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker")
 if _WORKER_DIR not in sys.path:
     sys.path.insert(0, _WORKER_DIR)
@@ -18,7 +16,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.handlers.normalize import (
+from src.handlers.normalize import (  # noqa: E402
     extract_identifiers,
     extract_vendor_names,
     normalize_entity_name,

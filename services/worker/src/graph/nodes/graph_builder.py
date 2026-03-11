@@ -51,7 +51,10 @@ async def graph_builder_node(state: CivicProofState) -> dict[str, Any]:
     # Step 2: LLM-enhanced relationship extraction from parsed documents
     if artifact_ids:
         try:
-            llm = get_agent_llm("graph_builder", temperature=0.1, max_tokens=2048, case_id=state.get("case_id", ""))
+            llm = get_agent_llm(
+                "graph_builder", temperature=0.1,
+                max_tokens=2048, case_id=state.get("case_id", ""),
+            )
 
             async with async_session_context() as db:
                 from civicproof_common.db.models import RawArtifactModel
@@ -80,12 +83,14 @@ async def graph_builder_node(state: CivicProofState) -> dict[str, Any]:
                     continue
 
                 prompt = (
-                    f"From this federal document (source: {art.source}), extract entity relationships:\n\n"
+                    f"From this federal document (source: {art.source}),"
+                    f" extract entity relationships:\n\n"
                     f"{doc_text}\n\n"
                     f"Known entities in this case: {entity_names}\n\n"
                     "Return JSON array of relationships:\n"
                     '[{"source_entity": "...", "target_entity": "...", '
-                    '"rel_type": "contractor_subcontractor|officer_of|subsidiary_of|shared_address|political_donor|awarded_by", '
+                    '"rel_type": "contractor_subcontractor|officer_of|'
+                    'subsidiary_of|shared_address|political_donor|awarded_by", '
                     '"evidence_excerpt": "...", "confidence": 0.0-1.0}]\n\n'
                     "Return [] if no relationships found."
                 )

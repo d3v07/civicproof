@@ -38,8 +38,9 @@ async def search_sam_opportunities(
     """Search SAM.gov for federal contract opportunities by keyword.
     Returns opportunity notices with solicitation numbers, agencies, and set-asides.
     Use for: checking if an entity has active or recent contract opportunities."""
-    from ...connectors.sam_gov import SAMGovConnector
     from civicproof_common.config import get_settings
+
+    from ...connectors.sam_gov import SAMGovConnector
 
     settings = get_settings()
     if not settings.SAM_GOV_API_KEY:
@@ -108,8 +109,9 @@ async def search_openfec_committees(
     """Search OpenFEC for political action committees and campaign contributions.
     Returns committee records with treasurer names, party affiliations, and cycles.
     Use for: entities or individuals with potential political donation activity."""
-    from ...connectors.openfec import OpenFECConnector
     from civicproof_common.config import get_settings
+
+    from ...connectors.openfec import OpenFECConnector
 
     settings = get_settings()
     if not settings.OPENFEC_API_KEY:

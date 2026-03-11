@@ -58,6 +58,10 @@ class OversightGovConnector(BaseConnector):
 
         url = f"{self.base_url}/api/reports"
         response = await self._rate_limited_get(url, params=query_params)
+        content_type = response.headers.get("content-type", "")
+        if "json" not in content_type:
+            logger.warning("oversight_gov returned non-JSON (API may be unavailable)")
+            return FetchResult(artifacts=[], total_count=0, has_next=False)
         data = response.json()
 
         reports = data if isinstance(data, list) else data.get("results", [])

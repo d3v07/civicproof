@@ -11,17 +11,15 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from civicproof_common.db.models import (
     AuditEventModel,
     CaseModel,
     CasePackModel,
-    ClaimModel,
     CitationModel,
+    ClaimModel,
 )
 from civicproof_common.db.session import get_session
-
+from httpx import ASGITransport, AsyncClient
 
 # ── Fixtures ────────────────────────────────────────────────────────────
 
@@ -389,31 +387,57 @@ class TestMetricsEndpoint:
         mock_db = AsyncMock()
         call_results = []
         # 1: total_cases
-        r = MagicMock(); r.scalar.return_value = 42; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 42
+        call_results.append(r)
         # 2: total_artifacts
-        r = MagicMock(); r.scalar.return_value = 200; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 200
+        call_results.append(r)
         # 3: sources_active
-        r = MagicMock(); r.scalar.return_value = 4; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 4
+        call_results.append(r)
         # 4: total_packs
-        r = MagicMock(); r.scalar.return_value = 30; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 30
+        call_results.append(r)
         # 5: passed_packs
-        r = MagicMock(); r.scalar.return_value = 28; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 28
+        call_results.append(r)
         # 6: cases_24h
-        r = MagicMock(); r.scalar.return_value = 5; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 5
+        call_results.append(r)
         # 7: artifacts_24h
-        r = MagicMock(); r.scalar.return_value = 15; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 15
+        call_results.append(r)
         # 8: blocks_24h
-        r = MagicMock(); r.scalar.return_value = 1; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 1
+        call_results.append(r)
         # 9: total_audits
-        r = MagicMock(); r.scalar.return_value = 100; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 100
+        call_results.append(r)
         # 10: total_blocks
-        r = MagicMock(); r.scalar.return_value = 5; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 5
+        call_results.append(r)
         # 11: timing_query
-        r = MagicMock(); r.all.return_value = [(10.0,), (15.0,), (20.0,)]; call_results.append(r)
+        r = MagicMock()
+        r.all.return_value = [(10.0,), (15.0,), (20.0,)]
+        call_results.append(r)
         # 12: total_mentions
-        r = MagicMock(); r.scalar.return_value = 50; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 50
+        call_results.append(r)
         # 13: resolved_mentions
-        r = MagicMock(); r.scalar.return_value = 45; call_results.append(r)
+        r = MagicMock()
+        r.scalar.return_value = 45
+        call_results.append(r)
 
         mock_db.execute = AsyncMock(side_effect=call_results)
 

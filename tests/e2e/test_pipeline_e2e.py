@@ -6,7 +6,6 @@ and DB state is updated correctly. Covers approved, blocked, and failed paths.
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
 import uuid
@@ -23,7 +22,7 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from civicproof_common.schemas.events import EventEnvelope, EventType
+from civicproof_common.schemas.events import EventEnvelope, EventType  # noqa: E402
 
 
 def _mock_async_ctx(mock_db):

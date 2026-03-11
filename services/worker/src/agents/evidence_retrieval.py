@@ -14,9 +14,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from civicproof_common.config import get_settings
 from civicproof_common.db.models import RawArtifactModel
 from civicproof_common.hashing import content_hash
+from civicproof_common.rate_limiter import RateLimiter
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..connectors.doj import DOJConnector
@@ -67,9 +70,11 @@ class EvidenceRetrievalAgent:
         self,
         db: AsyncSession,
         staleness_threshold: timedelta = STALENESS_THRESHOLD,
+        rate_limiter: RateLimiter | None = None,
     ) -> None:
         self._db = db
         self._staleness = staleness_threshold
+        self._rate_limiter = rate_limiter
 
     async def retrieve(
         self,
@@ -190,7 +195,10 @@ class EvidenceRetrievalAgent:
             manifest.stale_sources = []
             now = datetime.now(UTC)
             for source in manifest.artifacts_by_source:
-                if manifest.freshness.get(source) and (now - manifest.freshness[source]) > self._staleness:
+                if (
+                    manifest.freshness.get(source)
+                    and (now - manifest.freshness[source]) > self._staleness
+                ):
                     manifest.stale_sources.append(source)
             manifest.coverage_score = max(
                 0.0, len(manifest.artifacts_by_source) / len(EXPECTED_SOURCES)
@@ -199,11 +207,26 @@ class EvidenceRetrievalAgent:
 
         return result
 
+    async def _upsert_artifact(
+        self, source: str, canonical_url: str, c_hash: str, raw_data: dict,
+    ) -> bool:
+        """Insert artifact, skip if duplicate (source, content_hash). Returns True if new."""
+        stmt = pg_insert(RawArtifactModel).values(
+            artifact_id=str(uuid.uuid4()),
+            source=source,
+            source_url=canonical_url,
+            content_hash=c_hash,
+            storage_path=f"artifacts/{source}/{c_hash[:16]}.json",
+            metadata_=raw_data,
+        ).on_conflict_do_nothing(index_elements=["source", "content_hash"])
+        r = await self._db.execute(stmt)
+        return r.rowcount > 0
+
     async def _fetch_usaspending(
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch awards from USAspending and store as raw artifacts."""
-        connector = USAspendingConnector()
+        connector = USAspendingConnector(rate_limiter=self._rate_limiter)
         stored = 0
         try:
             records = await connector.search_by_recipient_name(entity_name, max_pages=2)
@@ -211,18 +234,8 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="usaspending",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/usaspending/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("usaspending", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "usaspending",
                 "records_fetched": len(records),
@@ -244,7 +257,7 @@ class EvidenceRetrievalAgent:
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch SEC EDGAR filings and store as raw artifacts."""
-        connector = SECEdgarConnector()
+        connector = SECEdgarConnector(rate_limiter=self._rate_limiter)
         stored = 0
         try:
             records = await connector.search_company_filings(entity_name, max_pages=2)
@@ -252,18 +265,8 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="sec_edgar",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/sec_edgar/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("sec_edgar", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "sec_edgar",
                 "records_fetched": len(records),
@@ -283,7 +286,7 @@ class EvidenceRetrievalAgent:
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch DOJ press releases mentioning entity and store as raw artifacts."""
-        connector = DOJConnector()
+        connector = DOJConnector(rate_limiter=self._rate_limiter)
         stored = 0
         try:
             records = await connector.search_fraud_releases(max_pages=2)
@@ -297,25 +300,18 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="doj",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/doj/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("doj", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "doj",
                 "records_fetched": len(records),
                 "records_relevant": len(relevant),
                 "records_stored": stored,
             })
-            logger.info("doj fetch entity=%s relevant=%d stored=%d", entity_name, len(relevant), stored)
+            logger.info(
+                "doj fetch entity=%s relevant=%d stored=%d",
+                entity_name, len(relevant), stored,
+            )
         except Exception as exc:
             logger.warning("doj fetch failed for %s: %s", entity_name, exc)
             result.retrieval_log.append({
@@ -329,7 +325,7 @@ class EvidenceRetrievalAgent:
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch Oversight.gov IG reports mentioning entity."""
-        connector = OversightGovConnector()
+        connector = OversightGovConnector(rate_limiter=self._rate_limiter)
         stored = 0
         try:
             records = await connector.search_ig_reports(entity_name, max_pages=2)
@@ -337,18 +333,8 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="oversight_gov",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/oversight_gov/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("oversight_gov", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "oversight_gov",
                 "records_fetched": len(records),
@@ -368,7 +354,6 @@ class EvidenceRetrievalAgent:
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch SAM.gov contract opportunities mentioning entity."""
-        from civicproof_common.config import get_settings
         settings = get_settings()
         if not settings.SAM_GOV_API_KEY:
             result.retrieval_log.append({
@@ -376,7 +361,9 @@ class EvidenceRetrievalAgent:
             })
             return 0
         from ..connectors.sam_gov import SAMGovConnector
-        connector = SAMGovConnector(api_key=settings.SAM_GOV_API_KEY)
+        connector = SAMGovConnector(
+            api_key=settings.SAM_GOV_API_KEY, rate_limiter=self._rate_limiter,
+        )
         stored = 0
         try:
             from ..connectors.base import FetchParams
@@ -387,18 +374,8 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="sam_gov",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/sam_gov/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("sam_gov", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "sam_gov",
                 "records_fetched": len(fetch_result.artifacts),
@@ -418,7 +395,6 @@ class EvidenceRetrievalAgent:
         self, entity_name: str, result: EvidenceRetrievalResult,
     ) -> int:
         """Fetch OpenFEC contributions by employer matching entity."""
-        from civicproof_common.config import get_settings
         settings = get_settings()
         if not settings.OPENFEC_API_KEY:
             result.retrieval_log.append({
@@ -426,7 +402,9 @@ class EvidenceRetrievalAgent:
             })
             return 0
         from ..connectors.openfec import OpenFECConnector
-        connector = OpenFECConnector(api_key=settings.OPENFEC_API_KEY)
+        connector = OpenFECConnector(
+            api_key=settings.OPENFEC_API_KEY, rate_limiter=self._rate_limiter,
+        )
         stored = 0
         try:
             from ..connectors.base import FetchParams
@@ -438,18 +416,8 @@ class EvidenceRetrievalAgent:
                 raw_bytes = json.dumps(record, sort_keys=True, default=str).encode()
                 c_hash = content_hash(raw_bytes)
                 canonical_url = connector.canonical_url(record)
-                artifact = RawArtifactModel(
-                    artifact_id=str(uuid.uuid4()),
-                    source="openfec",
-                    source_url=canonical_url,
-                    content_hash=c_hash,
-                    storage_path=f"artifacts/openfec/{c_hash[:16]}.json",
-                    metadata_=record,
-                )
-                self._db.add(artifact)
-                stored += 1
-            if stored:
-                await self._db.flush()
+                if await self._upsert_artifact("openfec", canonical_url, c_hash, record):
+                    stored += 1
             result.fetches_triggered.append({
                 "source": "openfec",
                 "records_fetched": len(fetch_result.artifacts),

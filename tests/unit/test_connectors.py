@@ -15,10 +15,10 @@ _SRC_INIT = os.path.join(_WORKER_DIR, "src", "__init__.py")
 if not os.path.exists(_SRC_INIT):
     open(_SRC_INIT, "a").close()
 
-from src.connectors.base import FetchParams, FetchResult
-from src.connectors.doj import DOJConnector
-from src.connectors.oversight import OversightGovConnector
-from src.connectors.sec_edgar import SECEdgarConnector
+from src.connectors.base import FetchParams  # noqa: E402
+from src.connectors.doj import DOJConnector  # noqa: E402
+from src.connectors.oversight import OversightGovConnector  # noqa: E402
+from src.connectors.sec_edgar import SECEdgarConnector  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +221,11 @@ class TestDOJConnector:
                 "uuid": "pr-001",
                 "title": "Company Settles False Claims Act Allegations",
                 "date": "2024-06-15",
-                "body": "Acme Corp agreed to pay $2.5 million. Case No. 1:24-cv-00789. Eastern District of Texas.",
+                "body": (
+                    "Acme Corp agreed to pay $2.5 million."
+                    " Case No. 1:24-cv-00789."
+                    " Eastern District of Texas."
+                ),
                 "url": "/pr/acme-settlement",
                 "component": {"name": "Civil Division"},
                 "topic": [{"name": "False Claims Act"}],
@@ -354,8 +358,12 @@ class TestOversightGovConnector:
             "total": 1,
         }
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
-        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp):
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
+        ):
             result = await c.fetch_page(FetchParams())
 
         assert len(result.artifacts) == 1
@@ -374,8 +382,12 @@ class TestOversightGovConnector:
             {"id": "r2", "title": "Report 2"},
         ]
         mock_resp.content = b"[]"
+        mock_resp.headers = {"content-type": "application/json"}
 
-        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp):
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
+        ):
             result = await c.fetch_page(FetchParams(page_size=50))
 
         assert len(result.artifacts) == 2
@@ -390,8 +402,12 @@ class TestOversightGovConnector:
             "total": 200,
         }
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
-        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp):
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
+        ):
             result = await c.fetch_page(FetchParams(page=1, page_size=50))
 
         assert result.has_next is True
@@ -409,9 +425,15 @@ class TestOversightGovConnector:
             "total": 2,
         }
         mock_resp.content = b"{}"
+        mock_resp.headers = {"content-type": "application/json"}
 
-        with patch.object(c, "_rate_limited_get", new_callable=AsyncMock, return_value=mock_resp):
-            results = await c.search_ig_reports("procurement fraud", max_pages=1)
+        with patch.object(
+            c, "_rate_limited_get",
+            new_callable=AsyncMock, return_value=mock_resp,
+        ):
+            results = await c.search_ig_reports(
+                "procurement fraud", max_pages=1,
+            )
 
         assert len(results) == 2
 

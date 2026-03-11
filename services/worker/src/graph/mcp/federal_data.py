@@ -8,7 +8,6 @@ Or import the `mcp_app` for programmatic use / testing.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import UTC, datetime
@@ -47,9 +46,10 @@ async def search_sam_opportunities(
 ) -> str:
     """Search SAM.gov for federal contract opportunities by keyword.
     Returns opportunity notices with solicitation numbers and agencies."""
-    from ...connectors.sam_gov import SAMGovConnector
-    from ...connectors.base import FetchParams
     from civicproof_common.config import get_settings
+
+    from ...connectors.base import FetchParams
+    from ...connectors.sam_gov import SAMGovConnector
 
     settings = get_settings()
     if not settings.SAM_GOV_API_KEY:
@@ -116,9 +116,10 @@ async def search_openfec_committees(
 ) -> str:
     """Search OpenFEC for political action committees and campaign contributions.
     Returns committee records with treasurer names and party affiliations."""
-    from ...connectors.openfec import OpenFECConnector
-    from ...connectors.base import FetchParams
     from civicproof_common.config import get_settings
+
+    from ...connectors.base import FetchParams
+    from ...connectors.openfec import OpenFECConnector
 
     settings = get_settings()
     if not settings.OPENFEC_API_KEY:

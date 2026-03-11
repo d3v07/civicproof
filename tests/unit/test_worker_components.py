@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import json
-import sys
 import os
-import uuid
+import sys
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,14 +14,13 @@ _WORKER_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "services", "w
 if _WORKER_SRC not in sys.path:
     sys.path.insert(0, _WORKER_SRC)
 
-from connectors.base import (
+from connectors.base import (  # noqa: E402
+    USER_AGENT,
     BaseConnector,
     FetchParams,
     FetchResult,
     IngestRunResult,
-    USER_AGENT,
 )
-
 
 # ── dataclass tests ──────────────────────────────────────────────────────────
 
@@ -101,7 +99,7 @@ class _TestConnector(BaseConnector):
 
 class TestBaseConnector:
     def test_init_without_rate_limiter_warns(self):
-        with patch("logging.Logger.warning") as mock_warn:
+        with patch("logging.Logger.warning") as _mock_warn:
             c = _TestConnector()
         assert c._rate_limiter is None
 
@@ -421,12 +419,30 @@ class TestPdfRendererExtended:
         from renderers.pdf import render_case_pack_pdf
 
         claims = [
-            {"claim_id": "c-1", "statement": "Award over threshold", "claim_type": "risk_signal", "confidence": 0.85},
-            {"claim_id": "c-2", "statement": "Entity link found", "claim_type": "finding", "confidence": 0.92},
+            {
+                "claim_id": "c-1",
+                "statement": "Award over threshold",
+                "claim_type": "risk_signal",
+                "confidence": 0.85,
+            },
+            {
+                "claim_id": "c-2",
+                "statement": "Entity link found",
+                "claim_type": "finding",
+                "confidence": 0.92,
+            },
         ]
         citations = [
-            {"claim_id": "c-1", "artifact_id": "art-001", "excerpt": "Contract value: $5M"},
-            {"claim_id": "c-2", "artifact_id": "art-002", "excerpt": "Subsidiary relationship confirmed"},
+            {
+                "claim_id": "c-1",
+                "artifact_id": "art-001",
+                "excerpt": "Contract value: $5M",
+            },
+            {
+                "claim_id": "c-2",
+                "artifact_id": "art-002",
+                "excerpt": "Subsidiary relationship confirmed",
+            },
         ]
         audit_events = [
             {"stage": "intake", "policy_decision": "accepted", "timestamp": "2024-06-01T12:00:00"},
@@ -447,7 +463,12 @@ class TestPdfRendererExtended:
         from renderers.pdf import render_case_pack_pdf
 
         claims = [
-            {"claim_id": "c-xss", "statement": "<script>alert('xss')</script>", "claim_type": "finding", "confidence": 0.5},
+            {
+                "claim_id": "c-xss",
+                "statement": "<script>alert('xss')</script>",
+                "claim_type": "finding",
+                "confidence": 0.5,
+            },
         ]
         result = render_case_pack_pdf(
             case_id="c-xss-test",

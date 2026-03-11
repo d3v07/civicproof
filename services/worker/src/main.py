@@ -74,8 +74,9 @@ async def handle_case_created(envelope: EventEnvelope, redis_client: aioredis.Re
 
 
 async def _update_case_status(db, case_id: str, status: str) -> None:
-    from civicproof_common.db.models import CaseModel
     from datetime import UTC, datetime
+
+    from civicproof_common.db.models import CaseModel
     from sqlalchemy import select
 
     stmt = select(CaseModel).where(CaseModel.case_id == case_id)
@@ -89,6 +90,7 @@ async def _update_case_status(db, case_id: str, status: str) -> None:
 
 async def _log_audit_event(db, case_id: str, stage: str, decision: str, detail: str) -> None:
     import uuid
+
     from civicproof_common.db.models import AuditEventModel
 
     event = AuditEventModel(
@@ -104,6 +106,7 @@ async def _log_audit_event(db, case_id: str, stage: str, decision: str, detail: 
 
 async def _save_case_pack(db, case_id: str, result: dict) -> None:
     import uuid
+
     from civicproof_common.db.models import CasePackModel, CitationModel, ClaimModel
 
     case_pack = result.get("case_pack", {})

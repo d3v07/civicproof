@@ -23,9 +23,9 @@ for _p in (_WORKER_SRC, _GATEWAY_SRC):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import pytest
-from agents.auditor import AuditorGate
-from policies.content_filter import ContentFilter
+import pytest  # noqa: E402
+from agents.auditor import AuditorGate  # noqa: E402
+from policies.content_filter import ContentFilter  # noqa: E402
 
 # ── Prompt Injection Tests ─────────────────────────────────────
 

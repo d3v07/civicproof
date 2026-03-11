@@ -9,9 +9,8 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from civicproof_common.db.session import get_session
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture

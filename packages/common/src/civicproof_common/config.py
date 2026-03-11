@@ -46,15 +46,15 @@ class Settings(BaseSettings):
     GCP_REGION: str = Field(default="us-central1")
 
     VERTEX_AI_LOCATION: str = Field(default="us-central1")
-    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash")
+    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash-001")
 
     GEMINI_API_KEY: str | None = Field(default=None)
 
     OPENROUTER_API_KEY: str | None = Field(default=None)
     OPENROUTER_DEFAULT_MODEL: str = Field(default="anthropic/claude-3-5-sonnet")
 
-    LLM_MODEL_PRIMARY: str = Field(default="qwen/qwen-2.5-72b-instruct")
-    LLM_MODEL_LIGHTWEIGHT: str = Field(default="qwen/qwen-2.5-7b-instruct")
+    LLM_MODEL_PRIMARY: str = Field(default="google/gemini-2.0-flash-001")
+    LLM_MODEL_LIGHTWEIGHT: str = Field(default="google/gemini-2.0-flash-001")
     LLM_MAX_RETRIES: int = Field(default=2)
     LANGGRAPH_RECURSION_LIMIT: int = Field(default=25)
 

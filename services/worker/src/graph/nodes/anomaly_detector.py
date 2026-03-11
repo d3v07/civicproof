@@ -75,6 +75,7 @@ async def anomaly_detector_node(state: CivicProofState) -> dict[str, Any]:
     from ...agents.anomaly_detector import AnomalyDetectorAgent
 
     entity = state["primary_entity"]
+    assert entity is not None, "primary_entity must be set"
     artifact_ids = state.get("artifact_ids", [])
     sources_used = state.get("sources_used", [])
 

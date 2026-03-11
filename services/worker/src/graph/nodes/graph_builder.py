@@ -35,6 +35,7 @@ async def graph_builder_node(state: CivicProofState) -> dict[str, Any]:
     from ...agents.graph_builder import GraphBuilderAgent
 
     entity = state["primary_entity"]
+    assert entity is not None, "primary_entity must be set"
     related = state.get("related_entities", [])
     artifact_ids = state.get("artifact_ids", [])
 

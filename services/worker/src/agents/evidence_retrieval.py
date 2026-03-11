@@ -195,10 +195,8 @@ class EvidenceRetrievalAgent:
             manifest.stale_sources = []
             now = datetime.now(UTC)
             for source in manifest.artifacts_by_source:
-                if (
-                    manifest.freshness.get(source)
-                    and (now - manifest.freshness[source]) > self._staleness
-                ):
+                ts = manifest.freshness.get(source)
+                if ts and (now - ts) > self._staleness:
                     manifest.stale_sources.append(source)
             manifest.coverage_score = max(
                 0.0, len(manifest.artifacts_by_source) / len(EXPECTED_SOURCES)

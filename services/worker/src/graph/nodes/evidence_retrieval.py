@@ -43,6 +43,7 @@ async def evidence_retrieval_node(state: CivicProofState) -> dict[str, Any]:
     from ...agents.evidence_retrieval import EvidenceRetrievalAgent
 
     entity = state["primary_entity"]
+    assert entity is not None, "primary_entity must be set"
 
     settings = get_settings()
     redis_client = aioredis.from_url(settings.REDIS_URL)

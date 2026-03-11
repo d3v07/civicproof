@@ -52,6 +52,7 @@ async def case_composer_node(state: CivicProofState) -> dict[str, Any]:
     from ...agents.case_composer import CaseComposerAgent
 
     entity = state["primary_entity"]
+    assert entity is not None, "primary_entity must be set"
     risk_signals = state.get("risk_signals", [])
     sources_used = state.get("sources_used", [])
     artifact_ids = state.get("artifact_ids", [])

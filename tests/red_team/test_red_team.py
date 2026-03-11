@@ -14,11 +14,18 @@ Markers: @pytest.mark.red_team
 
 from __future__ import annotations
 
-import pytest
-from agents.auditor import AuditorGate
+import os
+import sys
 
-# Import gateway content filter
-from policies.content_filter import ContentFilter
+_WORKER_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "services", "worker", "src")
+_GATEWAY_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "services", "gateway", "src")
+for _p in (_WORKER_SRC, _GATEWAY_SRC):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import pytest  # noqa: E402
+from agents.auditor import AuditorGate  # noqa: E402
+from policies.content_filter import ContentFilter  # noqa: E402
 
 # ── Prompt Injection Tests ─────────────────────────────────────
 

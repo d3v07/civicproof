@@ -1,12 +1,55 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { ArrowLeft, Download, Copy, ChevronDown, ChevronRight, ExternalLink, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { mockCases, mockCasePack } from '../../lib/mock-data';
 import * as api from '../../lib/api';
 import { useToast } from '../../components/ToastProvider';
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
+
+function synthesizeGraph(claims, citations) {
+  const nodeMap = new Map();
+  const links = [];
+
+  claims.forEach((claim) => {
+    const entities = extractEntities(claim.statement);
+    entities.forEach((name) => {
+      if (!nodeMap.has(name)) {
+        nodeMap.set(name, {
+          id: name,
+          name,
+          type: claim.claim_type,
+          val: 1,
+        });
+      } else {
+        nodeMap.get(name).val += 1;
+      }
+    });
+
+    for (let i = 0; i < entities.length; i++) {
+      for (let j = i + 1; j < entities.length; j++) {
+        links.push({ source: entities[i], target: entities[j], claim_id: claim.claim_id });
+      }
+    }
+  });
+
+  return { nodes: Array.from(nodeMap.values()), links };
+}
+
+function extractEntities(text) {
+  const words = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) || [];
+  const stopwords = new Set(['The', 'This', 'That', 'These', 'Those', 'However', 'Although', 'While', 'During', 'Between', 'Within', 'Through', 'Federal', 'Contract', 'Award', 'Government']);
+  return [...new Set(words.filter((w) => w.length > 2 && !stopwords.has(w)))].slice(0, 8);
+}
+
+const NODE_COLORS = {
+  finding: '#22c55e',
+  risk_signal: '#f59e0b',
+  hypothesis: '#8b5cf6',
+};
 
 const STAGE_META = {
   intake: { agent: 'Data Engineer', color: '#3b82f6' },
@@ -76,10 +119,81 @@ function ClaimCard({ claim, citations, isOpen, onToggle }) {
   );
 }
 
+function EntityGraph({ claims, citations, graphEdges }) {
+  const graphData = useMemo(() => {
+    if (graphEdges?.length > 0) {
+      const nodeMap = new Map();
+      const links = [];
+      graphEdges.forEach((edge) => {
+        if (!nodeMap.has(edge.source_entity_id)) {
+          nodeMap.set(edge.source_entity_id, { id: edge.source_entity_id, name: edge.source_name || edge.source_entity_id, type: 'finding', val: 1 });
+        }
+        if (!nodeMap.has(edge.target_entity_id)) {
+          nodeMap.set(edge.target_entity_id, { id: edge.target_entity_id, name: edge.target_name || edge.target_entity_id, type: 'finding', val: 1 });
+        }
+        nodeMap.get(edge.source_entity_id).val += edge.weight || 1;
+        nodeMap.get(edge.target_entity_id).val += edge.weight || 1;
+        links.push({ source: edge.source_entity_id, target: edge.target_entity_id });
+      });
+      return { nodes: Array.from(nodeMap.values()), links };
+    }
+    return synthesizeGraph(claims, citations);
+  }, [claims, citations, graphEdges]);
+
+  if (graphData.nodes.length === 0) {
+    return (
+      <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>
+        No entity relationships found in claims.
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 10 }}>
+      <ForceGraph2D
+        graphData={graphData}
+        width={800}
+        height={450}
+        backgroundColor="#06060a"
+        nodeLabel={(node) => `${node.name} (${node.type})`}
+        nodeColor={(node) => NODE_COLORS[node.type] || '#6366f1'}
+        nodeRelSize={6}
+        nodeVal={(node) => node.val}
+        linkColor={() => '#1a1a25'}
+        linkWidth={1.5}
+        linkDirectionalParticles={1}
+        linkDirectionalParticleWidth={2}
+        linkDirectionalParticleColor={() => '#6366f133'}
+        nodeCanvasObject={(node, ctx, globalScale) => {
+          const fontSize = Math.max(10 / globalScale, 3);
+          const color = NODE_COLORS[node.type] || '#6366f1';
+          const size = Math.sqrt(node.val || 1) * 4;
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
+          ctx.fillStyle = color + '33';
+          ctx.fill();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5 / globalScale;
+          ctx.stroke();
+
+          ctx.fillStyle = '#e4e4e7';
+          ctx.font = `${fontSize}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(node.name, node.x, node.y + size + 2);
+        }}
+        cooldownTicks={60}
+      />
+    </div>
+  );
+}
+
 export default function CaseDetailPage() {
   const params = useParams();
   const [caseData, setCaseData] = useState(null);
   const [pack, setPack] = useState(null);
+  const [error, setError] = useState(null);
   const [openClaim, setOpenClaim] = useState(null);
   const [activeTab, setActiveTab] = useState('findings');
   const { addToast } = useToast();
@@ -89,19 +203,59 @@ export default function CaseDetailPage() {
       try {
         const c = await api.getCase(params.id);
         setCaseData(c);
+      } catch (e) {
+        if (e.message?.includes('404')) {
+          setError('not_found');
+        } else {
+          setError('Failed to load case. Is the API running?');
+        }
+        return;
+      }
+      try {
         const p = await api.getCasePack(params.id);
         setPack(p);
       } catch {
-        setCaseData(mockCases.find((c) => c.case_id === params.id) || mockCases[0]);
-        setPack(mockCasePack);
+        setPack({ claims: [], citations: [], audit_events: [], generated_at: new Date().toISOString(), pack_hash: null });
       }
     }
     load();
   }, [params.id]);
 
+  if (error === 'not_found') {
+    return (
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 48, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8 }}>404</div>
+        <div style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 16 }}>Case not found</div>
+        <Link href="/cases" style={{ fontSize: 13, color: 'var(--accent)' }}>Back to Cases</Link>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <AlertTriangle size={20} style={{ color: 'var(--amber)', marginBottom: 8 }} />
+        <div style={{ color: 'var(--text-2)' }}>{error}</div>
+        <Link href="/cases" style={{ fontSize: 13, color: 'var(--accent)', marginTop: 12, display: 'inline-block' }}>Back to Cases</Link>
+      </div>
+    );
+  }
+
   if (!caseData || !pack) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading case...</div>
+      <div style={{ padding: 24 }}>
+        <div style={{ height: 14, width: '20%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 16 }} className="skeleton-pulse" />
+        <div style={{ height: 24, width: '50%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 8 }} className="skeleton-pulse" />
+        <div style={{ height: 14, width: '30%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 24 }} className="skeleton-pulse" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card" style={{ padding: 14, textAlign: 'center' }}>
+              <div style={{ height: 28, width: '40%', background: 'var(--bg-hover)', borderRadius: 4, margin: '0 auto 6px' }} className="skeleton-pulse" />
+              <div style={{ height: 12, width: '60%', background: 'var(--bg-hover)', borderRadius: 4, margin: '0 auto' }} className="skeleton-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -114,15 +268,26 @@ export default function CaseDetailPage() {
     addToast({ message: 'Link copied', type: 'success' });
   };
 
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `civicproof_${caseData.case_id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addToast({ message: 'Dossier exported', type: 'success' });
+  const handleExport = async () => {
+    try {
+      const pdfBlob = await api.getCasePackPdf(params.id);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `civicproof_${caseData.case_id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast({ message: 'PDF exported', type: 'success' });
+    } catch {
+      const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `civicproof_${caseData.case_id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast({ message: 'Exported as JSON (PDF unavailable)', type: 'info' });
+    }
   };
 
   return (
@@ -198,13 +363,21 @@ export default function CaseDetailPage() {
         <button className={`tab ${activeTab === 'hypotheses' ? 'active' : ''}`} onClick={() => setActiveTab('hypotheses')}>
           Hypotheses ({hypotheses.length})
         </button>
+        <button className={`tab ${activeTab === 'graph' ? 'active' : ''}`} onClick={() => setActiveTab('graph')}>
+          Entity Graph
+        </button>
         <button className={`tab ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
           Audit Trail
         </button>
       </div>
 
+      {/* Entity Graph */}
+      {activeTab === 'graph' && (
+        <EntityGraph claims={pack.claims} citations={pack.citations} graphEdges={pack.graph_edges} />
+      )}
+
       {/* Claims */}
-      {activeTab !== 'audit' && (
+      {activeTab !== 'audit' && activeTab !== 'graph' && (
         <div>
           {(activeTab === 'findings' ? findings : activeTab === 'risks' ? riskSignals : hypotheses).map((claim) => (
             <ClaimCard

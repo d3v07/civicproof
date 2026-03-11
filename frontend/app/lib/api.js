@@ -61,6 +61,13 @@ export async function getCasePack(caseId) {
     return apiFetch(`/v1/cases/${caseId}/pack`);
 }
 
+export async function getCasePackPdf(caseId) {
+    const url = `${API_BASE}/v1/cases/${caseId}/pack.pdf`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`PDF export failed: ${res.status}`);
+    return res.blob();
+}
+
 // ── Search ──
 
 export async function searchEntities(q, entityType = null, page = 1, pageSize = 20) {

@@ -156,6 +156,8 @@ def upgrade() -> None:
         sa.Column("rel_type", sa.String(64), nullable=False),
         sa.Column("evidence_ids", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("confidence", sa.Float(), nullable=False, server_default="0.5"),
+        sa.Column("provenance_artifact_id", sa.String(36), nullable=True),
+        sa.Column("metadata", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -264,7 +264,7 @@ class CaseComposerAgent:
         sole_source = [
             a for a in awards_data
             if a.get("is_sole_source") or (
-                a.get("extent_competed", "").upper() in (
+                (a.get("extent_competed") or "").upper() in (
                     "NOT COMPETED", "SOLE SOURCE", "C", "D"
                 )
             )

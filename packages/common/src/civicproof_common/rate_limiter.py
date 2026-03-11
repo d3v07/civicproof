@@ -74,7 +74,7 @@ class RateLimiter:
     async def acquire(self, source: str) -> bool:
         limit = self._get_limit(source)
         key = f"{_RATE_LIMIT_PREFIX}{source}"
-        now = time.monotonic()
+        now = time.time()
         result = await self._script(
             keys=[key],
             args=[1, now, limit.tokens_per_second, limit.burst],

@@ -3,24 +3,31 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
-import { mockCases } from '../lib/mock-data';
+import { Plus, AlertTriangle } from 'lucide-react';
 import * as api from '../lib/api';
 
 export default function CasesPage() {
   const [filter, setFilter] = useState('all');
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [sortField, setSortField] = useState('updated_at');
+  const [sortDir, setSortDir] = useState('desc');
   const router = useRouter();
 
   useEffect(() => {
     api.listCases()
       .then((data) => setCases(data.items || data))
-      .catch(() => setCases(mockCases))
+      .catch((e) => setError(e.message || 'Failed to load cases'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = filter === 'all' ? cases : cases.filter((c) => c.status === filter);
+  const sorted = [...cases].sort((a, b) => {
+    const aVal = a[sortField] || '';
+    const bVal = b[sortField] || '';
+    return sortDir === 'desc' ? (bVal > aVal ? 1 : -1) : (aVal > bVal ? 1 : -1);
+  });
+  const filtered = filter === 'all' ? sorted : sorted.filter((c) => c.status === filter);
 
   const counts = {
     all: cases.length,
@@ -56,8 +63,24 @@ export default function CasesPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
-          <div style={{ fontSize: 13 }}>Loading...</div>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 2 }}>
+                <div style={{ height: 14, width: '60%', background: 'var(--bg-hover)', borderRadius: 4, marginBottom: 6 }} className="skeleton-pulse" />
+                <div style={{ height: 10, width: '30%', background: 'var(--bg-hover)', borderRadius: 4 }} className="skeleton-pulse" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ height: 14, width: '40%', background: 'var(--bg-hover)', borderRadius: 4 }} className="skeleton-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+          <AlertTriangle size={20} style={{ color: 'var(--amber)', marginBottom: 8 }} />
+          <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>Unable to load cases</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{error}</div>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
@@ -71,8 +94,12 @@ export default function CasesPage() {
                 <th>Case</th>
                 <th>Status</th>
                 <th>Seed</th>
-                <th>Opened</th>
-                <th>Updated</th>
+                <th style={{ cursor: 'pointer' }} onClick={() => { setSortField('created_at'); setSortDir(sortField === 'created_at' && sortDir === 'desc' ? 'asc' : 'desc'); }}>
+                  Opened {sortField === 'created_at' ? (sortDir === 'desc' ? '\u25BE' : '\u25B4') : ''}
+                </th>
+                <th style={{ cursor: 'pointer' }} onClick={() => { setSortField('updated_at'); setSortDir(sortField === 'updated_at' && sortDir === 'desc' ? 'asc' : 'desc'); }}>
+                  Updated {sortField === 'updated_at' ? (sortDir === 'desc' ? '\u25BE' : '\u25B4') : ''}
+                </th>
               </tr>
             </thead>
             <tbody>

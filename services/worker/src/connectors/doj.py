@@ -62,17 +62,17 @@ class DOJConnector(BaseConnector):
             "direction": "DESC",
         }
 
-        # Apply topic filter if provided
-        topics = params.query.get("topics")
-        if topics:
-            query_params["topic"] = ",".join(topics)
+        # Apply keyword filter via title parameter
+        keyword = params.query.get("keyword")
+        if keyword:
+            query_params["parameters[title]"] = keyword
 
         # Apply component filter (e.g., "criminal-division", "civil-division")
         component = params.query.get("component")
         if component:
-            query_params["component"] = component
+            query_params["parameters[component]"] = component
 
-        url = f"{self.base_url}/api/v1/press-releases.json"
+        url = f"{self.base_url}/api/v1/press_releases.json"
         response = await self._rate_limited_get(url, params=query_params)
         data = response.json()
 
@@ -135,7 +135,7 @@ class DOJConnector(BaseConnector):
         """Convenience: fetch fraud-related press releases."""
         all_artifacts: list[dict[str, Any]] = []
         params = FetchParams(
-            query={"topics": ["False Claims Act", "Fraud"]},
+            query={},
             page=1,
             page_size=50,
             since=since,

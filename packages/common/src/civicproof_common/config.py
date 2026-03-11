@@ -46,15 +46,23 @@ class Settings(BaseSettings):
     GCP_REGION: str = Field(default="us-central1")
 
     VERTEX_AI_LOCATION: str = Field(default="us-central1")
-    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash")
+    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash-001")
 
     GEMINI_API_KEY: str | None = Field(default=None)
 
     OPENROUTER_API_KEY: str | None = Field(default=None)
     OPENROUTER_DEFAULT_MODEL: str = Field(default="anthropic/claude-3-5-sonnet")
 
+    LLM_MODEL_PRIMARY: str = Field(default="google/gemini-2.0-flash-001")
+    LLM_MODEL_LIGHTWEIGHT: str = Field(default="google/gemini-2.0-flash-001")
+    LLM_MAX_RETRIES: int = Field(default=2)
+    LANGGRAPH_RECURSION_LIMIT: int = Field(default=25)
+
     VLLM_BASE_URL: str = Field(default="http://localhost:8000/v1")
     VLLM_MODEL: str = Field(default="mistralai/Mistral-7B-Instruct-v0.2")
+
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
+    OLLAMA_MODEL: str = Field(default="qwen2.5:7b")
 
     SAM_GOV_API_KEY: str | None = Field(default=None)
     OPENFEC_API_KEY: str | None = Field(default=None)
@@ -64,6 +72,11 @@ class Settings(BaseSettings):
     ENABLE_LEGAL_PACK_MODE: bool = Field(default=False)
     PII_REDACTION_ENABLED: bool = Field(default=True)
     EVIDENCE_RETENTION_DAYS: int = Field(default=365)
+
+    WORKER_HEALTH_PORT: int = Field(default=8080)
+
+    ENABLE_GRAPH_BUILDER: bool = Field(default=True)
+    ENABLE_ANOMALY_DETECTOR: bool = Field(default=True)
 
 
 @lru_cache(maxsize=1)

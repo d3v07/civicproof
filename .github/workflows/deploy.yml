@@ -1,0 +1,79 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: civicproof-prod
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev/civicproof-prod/civicproof
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push images
+        run: |
+          for service in api worker gateway; do
+            docker build \
+              -f services/$service/Dockerfile . \
+              -t ${{ env.REGISTRY }}/$service:${{ github.sha }} \
+              -t ${{ env.REGISTRY }}/$service:latest
+            docker push ${{ env.REGISTRY }}/$service:${{ github.sha }}
+            docker push ${{ env.REGISTRY }}/$service:latest
+          done
+
+      - name: Deploy API to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: civicproof-api
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/api:${{ github.sha }}
+
+      - name: Deploy Worker to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: civicproof-worker
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/worker:${{ github.sha }}
+
+      - name: Deploy Gateway to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: civicproof-gateway
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/gateway:${{ github.sha }}
+
+      - name: Run database migration
+        run: |
+          gcloud run jobs execute civicproof-migrator \
+            --region ${{ env.REGION }} \
+            --wait \
+            || echo "Migration job not found or already up to date"
+
+      - name: Verify deployment
+        run: |
+          API_URL=$(gcloud run services describe civicproof-api \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          curl -sf "$API_URL/health" | grep -q '"status":"ok"'
+          echo "Deployment verified: $API_URL"

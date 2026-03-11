@@ -116,8 +116,10 @@ def _build_ollama(
     temperature: float,
     callbacks: list | None,
 ) -> BaseChatModel | None:
-    """Try to build Ollama LLM. Returns None if Ollama not reachable."""
+    """Try to build Ollama LLM. Returns None if OLLAMA_BASE_URL unset."""
     settings = get_settings()
+    if not settings.OLLAMA_BASE_URL:
+        return None
     try:
         from langchain_ollama import ChatOllama
         return ChatOllama(

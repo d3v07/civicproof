@@ -419,6 +419,81 @@ class TestGetCasePack:
             r = client.get(f"/v1/cases/{case.case_id}/pack")
         assert r.status_code == 200
 
+    def test_pack_includes_graph_edges(self, mock_db):
+        case = _make_case_model(status=CaseStatus.COMPLETE.value)
+        claim = MagicMock()
+        claim.claim_id = "cl-1"
+        claim.case_id = case.case_id
+        claim.claim_type = "finding"
+        claim.statement = "Sole-source contracts detected"
+        claim.confidence = 0.8
+        claim.is_audited = True
+        claim.audit_passed = True
+        claim.citations = []
+        case.claims = [claim]
+        case.audit_events = []
+        case.case_packs = []
+
+        # Second query returns graph edges
+        edge_row = MagicMock()
+        edge_row.source_entity_id = "ent-1"
+        edge_row.target_entity_id = "ent-2"
+        edge_row.source_name = "Acme Corp"
+        edge_row.target_name = "DOD"
+        edge_row.rel_type = "contract_recipient"
+        edge_row.confidence = 0.9
+
+        case_result = _scalar_result(case)
+        edge_result = MagicMock()
+        edge_result.all.return_value = [edge_row]
+        mock_db.execute = AsyncMock(
+            side_effect=[case_result, edge_result],
+        )
+
+        app = FastAPI()
+
+        async def _override():
+            yield mock_db
+        app.dependency_overrides[get_session] = _override
+        app.include_router(cases_router_mod.router, prefix="/v1")
+
+        with TestClient(app) as client:
+            r = client.get(f"/v1/cases/{case.case_id}/pack")
+        assert r.status_code == 200
+        body = r.json()
+        assert "graph_edges" in body
+        assert len(body["graph_edges"]) == 1
+        edge = body["graph_edges"][0]
+        assert edge["source_name"] == "Acme Corp"
+        assert edge["target_name"] == "DOD"
+        assert edge["rel_type"] == "contract_recipient"
+
+    def test_pack_graph_edges_empty_when_no_entity(self, mock_db):
+        case = _make_case_model(status=CaseStatus.COMPLETE.value)
+        case.claims = []
+        case.audit_events = []
+        case.case_packs = []
+
+        case_result = _scalar_result(case)
+        empty_result = MagicMock()
+        empty_result.all.return_value = []
+        mock_db.execute = AsyncMock(
+            side_effect=[case_result, empty_result],
+        )
+
+        app = FastAPI()
+
+        async def _override():
+            yield mock_db
+        app.dependency_overrides[get_session] = _override
+        app.include_router(cases_router_mod.router, prefix="/v1")
+
+        with TestClient(app) as client:
+            r = client.get(f"/v1/cases/{case.case_id}/pack")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["graph_edges"] == []
+
 
 class TestGetCasePackPdf:
     def test_pdf_returns_bytes(self, mock_db):

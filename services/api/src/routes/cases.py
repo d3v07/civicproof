@@ -12,6 +12,8 @@ from civicproof_common.db.models import (
     AuditEventModel,
     CaseModel,
     ClaimModel,
+    EntityModel,
+    RelationshipModel,
 )
 from civicproof_common.db.session import get_session
 from civicproof_common.hashing import content_hash
@@ -62,6 +64,7 @@ class CasePackResponse(BaseModel):
     claims: list[dict]
     citations: list[dict]
     audit_events: list[dict]
+    graph_edges: list[dict]
     generated_at: datetime
     pack_hash: str | None
 
@@ -256,11 +259,53 @@ async def get_case_pack(
         for a in case.audit_events
     ]
 
+    # Fetch entity graph edges for visualization
+    vendor_name = case.seed_input.get("vendor_name", "")
+    src = RelationshipModel
+    ent_src = EntityModel
+    ent_tgt = EntityModel
+    edge_query = (
+        select(
+            src.source_entity_id,
+            src.target_entity_id,
+            ent_src.canonical_name.label("source_name"),
+            ent_tgt.canonical_name.label("target_name"),
+            src.rel_type,
+            src.confidence,
+        )
+        .join(
+            ent_src,
+            src.source_entity_id == ent_src.entity_id,
+        )
+        .join(
+            ent_tgt,
+            src.target_entity_id == ent_tgt.entity_id,
+        )
+        .where(
+            (ent_src.canonical_name == vendor_name)
+            | (ent_tgt.canonical_name == vendor_name)
+        )
+        .limit(100)
+    )
+    edge_rows = (await db.execute(edge_query)).all()
+    graph_edges_out = [
+        {
+            "source_entity_id": r.source_entity_id,
+            "target_entity_id": r.target_entity_id,
+            "source_name": r.source_name,
+            "target_name": r.target_name,
+            "rel_type": r.rel_type,
+            "weight": r.confidence,
+        }
+        for r in edge_rows
+    ]
+
     return CasePackResponse(
         case_id=case_id,
         claims=claims_out,
         citations=citations_out,
         audit_events=audit_events_out,
+        graph_edges=graph_edges_out,
         generated_at=latest_pack.generated_at if latest_pack else datetime.now(UTC),
         pack_hash=latest_pack.pack_hash if latest_pack else None,
     )

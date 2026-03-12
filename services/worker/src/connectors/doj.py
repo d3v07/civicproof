@@ -12,6 +12,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+import httpx
+
 from .base import BaseConnector, FetchParams, FetchResult
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,18 @@ class DOJConnector(BaseConnector):
             query_params["parameters[component]"] = component
 
         url = f"{self.base_url}/api/v1/press_releases.json"
-        response = await self._rate_limited_get(url, params=query_params)
+        try:
+            response = await self._rate_limited_get(url, params=query_params)
+        except httpx.HTTPStatusError as exc:
+            code = exc.response.status_code
+            if code in (401, 403, 404):
+                logger.error(
+                    "doj_connector_auth_failure status=%d url=%s", code, url,
+                )
+                return FetchResult(
+                    artifacts=[], total_count=0, has_next=False,
+                )
+            raise
         data = response.json()
 
         results = data.get("results", [])

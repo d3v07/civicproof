@@ -502,6 +502,110 @@ class TestCascadingLLM:
                 assert len(llm.providers) == 2
 
 
+class TestOllamaConditional:
+    def test_ollama_excluded_when_base_url_not_set(self):
+        from unittest.mock import MagicMock, patch
+
+        from graph.llm import CascadingLLM, get_llm
+
+        mock_gemini = MagicMock()
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = "test-gemini"
+            mock_settings.return_value.VERTEX_AI_MODEL = "gemini-2.0-flash"
+            mock_settings.return_value.OLLAMA_BASE_URL = None
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = (
+                "google/gemini-2.0-flash-001"
+            )
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch(
+                "graph.llm._build_gemini", return_value=mock_gemini
+            ):
+                llm = get_llm()
+                assert isinstance(llm, CascadingLLM)
+                assert len(llm.providers) == 2
+                assert "ollama" not in " ".join(llm.provider_names)
+
+    def test_ollama_included_when_base_url_set(self):
+        from unittest.mock import MagicMock, patch
+
+        from graph.llm import CascadingLLM, get_llm
+
+        mock_gemini = MagicMock()
+        mock_ollama = MagicMock()
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = "test-gemini"
+            mock_settings.return_value.VERTEX_AI_MODEL = "gemini-2.0-flash"
+            mock_settings.return_value.OLLAMA_BASE_URL = (
+                "http://localhost:11434"
+            )
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = (
+                "google/gemini-2.0-flash-001"
+            )
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch(
+                "graph.llm._build_gemini", return_value=mock_gemini
+            ), patch(
+                "graph.llm._build_ollama", return_value=mock_ollama
+            ):
+                llm = get_llm()
+                assert isinstance(llm, CascadingLLM)
+                assert len(llm.providers) == 3
+                assert "ollama" in " ".join(llm.provider_names)
+
+    def test_openrouter_is_first_provider_when_key_set(self):
+        from unittest.mock import MagicMock, patch
+
+        from graph.llm import CascadingLLM, get_llm
+
+        mock_gemini = MagicMock()
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = "test-gemini"
+            mock_settings.return_value.VERTEX_AI_MODEL = "gemini-2.0-flash"
+            mock_settings.return_value.OLLAMA_BASE_URL = None
+            mock_settings.return_value.LLM_MODEL_PRIMARY = (
+                "google/gemini-2.0-flash-001"
+            )
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch(
+                "graph.llm._build_gemini", return_value=mock_gemini
+            ):
+                llm = get_llm()
+                assert isinstance(llm, CascadingLLM)
+                assert llm.provider_names[0].startswith("openrouter:")
+
+    def test_chain_without_ollama_is_openrouter_gemini_only(self):
+        from unittest.mock import MagicMock, patch
+
+        from graph.llm import CascadingLLM, get_llm
+
+        mock_gemini = MagicMock()
+        with patch("graph.llm.get_settings") as mock_settings:
+            mock_settings.return_value.OPENROUTER_API_KEY = "test-key"
+            mock_settings.return_value.GEMINI_API_KEY = "test-gemini"
+            mock_settings.return_value.VERTEX_AI_MODEL = "gemini-2.0-flash"
+            mock_settings.return_value.OLLAMA_BASE_URL = None
+            mock_settings.return_value.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.return_value.LLM_MODEL_PRIMARY = (
+                "google/gemini-2.0-flash-001"
+            )
+            mock_settings.return_value.LLM_MAX_RETRIES = 2
+            with patch(
+                "graph.llm._build_gemini", return_value=mock_gemini
+            ):
+                llm = get_llm()
+                assert isinstance(llm, CascadingLLM)
+                expected = [
+                    "openrouter:google/gemini-2.0-flash-001",
+                    "gemini:gemini-2.0-flash",
+                ]
+                assert llm.provider_names == expected
+
+
 class TestMCPServer:
     def test_mcp_app_exists(self):
         from graph.mcp.federal_data import mcp_app

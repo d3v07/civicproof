@@ -1,82 +1,83 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import SourcesPage from '../app/sources/page';
 import { mockSources } from '../app/lib/mock-data';
+import { ToastProvider } from '../app/components/ToastProvider';
 
 jest.mock('next/navigation', () => ({
     usePathname: () => '/sources',
     useParams: () => ({}),
 }));
 
+jest.mock('../app/lib/api', () => ({
+    getMetrics: jest.fn(() => Promise.reject(new Error('no backend'))),
+    triggerIngest: jest.fn(() => Promise.reject(new Error('no backend'))),
+}));
+
+function renderWithProviders(ui) {
+    return render(<ToastProvider>{ui}</ToastProvider>);
+}
+
 describe('Sources Page', () => {
     it('renders the page title', () => {
-        render(<SourcesPage />);
+        renderWithProviders(<SourcesPage />);
         expect(screen.getByRole('heading', { name: /Data Sources/ })).toBeInTheDocument();
     });
 
-    it('renders breadcrumb', () => {
-        render(<SourcesPage />);
-        // Dashboard link is in sidebar AND breadcrumb
-        expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
-    });
-
-    it('renders the connector overview summary box', () => {
-        render(<SourcesPage />);
-        expect(screen.getByText('Connector Overview')).toBeInTheDocument();
+    it('renders subtitle with connector count', () => {
+        renderWithProviders(<SourcesPage />);
+        expect(screen.getByText(/federal data connectors/)).toBeInTheDocument();
     });
 
     it('renders all source cards', () => {
-        render(<SourcesPage />);
+        renderWithProviders(<SourcesPage />);
         mockSources.forEach((s) => {
-            // Each source name appears in both card and compliance table
             expect(screen.getAllByText(s.name).length).toBeGreaterThan(0);
         });
     });
 
     it('renders rate limits for each source', () => {
-        render(<SourcesPage />);
+        renderWithProviders(<SourcesPage />);
         mockSources.forEach((s) => {
             const rateElements = screen.getAllByText(s.rate_limit);
             expect(rateElements.length).toBeGreaterThan(0);
         });
     });
 
-    it('renders trigger buttons for each source', () => {
-        render(<SourcesPage />);
-        const buttons = screen.getAllByText('Trigger Ingestion Run');
+    it('renders trigger sync buttons', () => {
+        renderWithProviders(<SourcesPage />);
+        const buttons = screen.getAllByText('Trigger Sync');
         expect(buttons.length).toBe(mockSources.length);
     });
 
-    it('changes button state on click', async () => {
-        jest.useFakeTimers();
-        render(<SourcesPage />);
-        const buttons = screen.getAllByText('Trigger Ingestion Run');
+    it('shows syncing state on button click', async () => {
+        renderWithProviders(<SourcesPage />);
+        const buttons = screen.getAllByText('Trigger Sync');
 
         await act(async () => {
             fireEvent.click(buttons[0]);
         });
 
-        expect(screen.getByText('Initiating...')).toBeInTheDocument();
-
-        await act(async () => {
-            jest.advanceTimersByTime(1100);
-        });
-
-        // After timeout, button should no longer show "Initiating..."
-        expect(screen.queryByText('Initiating...')).not.toBeInTheDocument();
-        jest.useRealTimers();
+        expect(screen.getByText('Syncing...')).toBeInTheDocument();
     });
 
     it('renders the rate limit compliance table', () => {
-        render(<SourcesPage />);
-        expect(screen.getByText('Rate Limit Compliance Matrix')).toBeInTheDocument();
+        renderWithProviders(<SourcesPage />);
+        expect(screen.getByText('Rate Limit Compliance')).toBeInTheDocument();
     });
 
     it('renders auth badges (API Key vs Public)', () => {
-        render(<SourcesPage />);
+        renderWithProviders(<SourcesPage />);
         const apiKeyBadges = screen.getAllByText('API Key');
         const publicBadges = screen.getAllByText('Public');
         expect(apiKeyBadges.length).toBeGreaterThan(0);
         expect(publicBadges.length).toBeGreaterThan(0);
+    });
+
+    it('renders schedule for each source', () => {
+        renderWithProviders(<SourcesPage />);
+        mockSources.forEach((s) => {
+            expect(screen.getAllByText(s.schedule).length).toBeGreaterThan(0);
+        });
     });
 });

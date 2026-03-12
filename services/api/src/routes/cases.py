@@ -12,6 +12,8 @@ from civicproof_common.db.models import (
     AuditEventModel,
     CaseModel,
     ClaimModel,
+    EntityModel,
+    RelationshipModel,
 )
 from civicproof_common.db.session import get_session
 from civicproof_common.hashing import content_hash
@@ -19,10 +21,11 @@ from civicproof_common.schemas.cases import CaseStatus
 from civicproof_common.schemas.events import EventEnvelope, EventType
 from civicproof_common.telemetry import StructuredLogger
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 try:
     from ..renderers.pdf import render_case_pack_pdf as _render_pdf
@@ -62,6 +65,7 @@ class CasePackResponse(BaseModel):
     claims: list[dict]
     citations: list[dict]
     audit_events: list[dict]
+    graph_edges: list[dict]
     generated_at: datetime
     pack_hash: str | None
 
@@ -79,8 +83,8 @@ def _row_to_case_response(row: CaseModel) -> CaseResponse:
 
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
-    page: int = 1,
-    page_size: int = 50,
+    page: int = QueryParam(default=1, ge=1),
+    page_size: int = QueryParam(default=50, ge=1, le=200),
     status: str | None = None,
     db: AsyncSession = Depends(get_session),
 ) -> CaseListResponse:
@@ -256,11 +260,52 @@ async def get_case_pack(
         for a in case.audit_events
     ]
 
+    # Fetch entity graph edges for visualization
+    vendor_name = case.seed_input.get("vendor_name", "")
+    ent_src = aliased(EntityModel)
+    ent_tgt = aliased(EntityModel)
+    edge_query = (
+        select(
+            RelationshipModel.source_entity_id,
+            RelationshipModel.target_entity_id,
+            ent_src.canonical_name.label("source_name"),
+            ent_tgt.canonical_name.label("target_name"),
+            RelationshipModel.rel_type,
+            RelationshipModel.confidence,
+        )
+        .join(
+            ent_src,
+            RelationshipModel.source_entity_id == ent_src.entity_id,
+        )
+        .join(
+            ent_tgt,
+            RelationshipModel.target_entity_id == ent_tgt.entity_id,
+        )
+        .where(
+            (ent_src.canonical_name == vendor_name)
+            | (ent_tgt.canonical_name == vendor_name)
+        )
+        .limit(100)
+    )
+    edge_rows = (await db.execute(edge_query)).all()
+    graph_edges_out = [
+        {
+            "source_entity_id": r.source_entity_id,
+            "target_entity_id": r.target_entity_id,
+            "source_name": r.source_name,
+            "target_name": r.target_name,
+            "rel_type": r.rel_type,
+            "weight": r.confidence,
+        }
+        for r in edge_rows
+    ]
+
     return CasePackResponse(
         case_id=case_id,
         claims=claims_out,
         citations=citations_out,
         audit_events=audit_events_out,
+        graph_edges=graph_edges_out,
         generated_at=latest_pack.generated_at if latest_pack else datetime.now(UTC),
         pack_hash=latest_pack.pack_hash if latest_pack else None,
     )

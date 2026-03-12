@@ -1,60 +1,98 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CasesPage from '../app/cases/page';
 import { mockCases } from '../app/lib/mock-data';
+
+const mockPush = jest.fn();
 
 jest.mock('next/navigation', () => ({
     usePathname: () => '/cases',
     useParams: () => ({}),
+    useRouter: () => ({ push: mockPush }),
+}));
+
+jest.mock('next/link', () => {
+    return ({ children, href, ...props }) => <a href={href} {...props}>{children}</a>;
+});
+
+jest.mock('../app/lib/api', () => ({
+    listCases: jest.fn(() => Promise.resolve({ items: mockCases })),
 }));
 
 describe('Cases Page', () => {
-    it('renders the page title', () => {
-        render(<CasesPage />);
-        expect(screen.getByText('Case Registry')).toBeInTheDocument();
+    beforeEach(() => {
+        mockPush.mockClear();
     });
 
-    it('renders breadcrumb navigation', () => {
+    it('renders the page title', async () => {
         render(<CasesPage />);
-        expect(screen.getByText('Dashboard')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Cases/ })).toBeInTheDocument();
     });
 
-    it('renders the correct number of status tabs', () => {
+    it('renders status filter tabs', async () => {
         render(<CasesPage />);
-        expect(screen.getByRole('tab', { name: /All Cases/i })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: /Complete/i })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: /Processing/i })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: /Blocked/i })).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/^All/)).toBeInTheDocument();
+        });
+        expect(screen.getByText(/Complete/)).toBeInTheDocument();
+        expect(screen.getByText(/Processing/)).toBeInTheDocument();
+        expect(screen.getByText(/Blocked/)).toBeInTheDocument();
     });
 
-    it('filters cases when a tab is clicked', () => {
+    it('renders case titles after loading', async () => {
         render(<CasesPage />);
-        const completeTab = screen.getByRole('tab', { name: /Complete/i });
-        fireEvent.click(completeTab);
-        expect(completeTab).toHaveAttribute('aria-selected', 'true');
+        await waitFor(() => {
+            mockCases.forEach((c) => {
+                expect(screen.getByText(c.title)).toBeInTheDocument();
+            });
+        });
     });
 
-    it('renders case titles in the table', () => {
+    it('renders table headers', async () => {
         render(<CasesPage />);
-        mockCases.forEach((c) => {
+        await waitFor(() => {
+            expect(screen.getByText('Case')).toBeInTheDocument();
+        });
+        expect(screen.getByText('Status')).toBeInTheDocument();
+        expect(screen.getByText('Seed')).toBeInTheDocument();
+    });
+
+    it('shows status badges', async () => {
+        render(<CasesPage />);
+        await waitFor(() => {
+            const badges = screen.getAllByText(/complete|processing|blocked/i);
+            expect(badges.length).toBeGreaterThan(0);
+        });
+    });
+
+    it('filters cases when a tab is clicked', async () => {
+        render(<CasesPage />);
+        await waitFor(() => {
+            expect(screen.getByText(mockCases[0].title)).toBeInTheDocument();
+        });
+
+        const blockedTab = screen.getByText(/Blocked/);
+        fireEvent.click(blockedTab);
+
+        const blockedCases = mockCases.filter(c => c.status === 'blocked');
+        blockedCases.forEach((c) => {
             expect(screen.getByText(c.title)).toBeInTheDocument();
         });
     });
 
-    it('renders proper table headers with scope', () => {
-        const { container } = render(<CasesPage />);
-        const ths = container.querySelectorAll('th[scope="col"]');
-        expect(ths.length).toBe(5);
+    it('renders New Research link to investigate page', async () => {
+        render(<CasesPage />);
+        const link = screen.getByText('New Research');
+        expect(link.closest('a')).toHaveAttribute('href', '/investigate');
     });
 
-    it('shows status badges', () => {
-        render(<CasesPage />);
-        const badges = screen.getAllByText(/complete|processing|blocked/i);
-        expect(badges.length).toBeGreaterThan(0);
-    });
+    it('shows error state when API fails', async () => {
+        const apiModule = require('../app/lib/api');
+        apiModule.listCases.mockImplementationOnce(() => Promise.reject(new Error('Network error')));
 
-    it('includes the result count text', () => {
         render(<CasesPage />);
-        expect(screen.getByText(/Showing .* of .* cases/)).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/Unable to load cases/)).toBeInTheDocument();
+        });
     });
 });

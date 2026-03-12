@@ -21,10 +21,11 @@ from civicproof_common.schemas.cases import CaseStatus
 from civicproof_common.schemas.events import EventEnvelope, EventType
 from civicproof_common.telemetry import StructuredLogger
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 try:
     from ..renderers.pdf import render_case_pack_pdf as _render_pdf
@@ -82,8 +83,8 @@ def _row_to_case_response(row: CaseModel) -> CaseResponse:
 
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
-    page: int = 1,
-    page_size: int = 50,
+    page: int = QueryParam(default=1, ge=1),
+    page_size: int = QueryParam(default=50, ge=1, le=200),
     status: str | None = None,
     db: AsyncSession = Depends(get_session),
 ) -> CaseListResponse:
@@ -261,25 +262,24 @@ async def get_case_pack(
 
     # Fetch entity graph edges for visualization
     vendor_name = case.seed_input.get("vendor_name", "")
-    src = RelationshipModel
-    ent_src = EntityModel
-    ent_tgt = EntityModel
+    ent_src = aliased(EntityModel)
+    ent_tgt = aliased(EntityModel)
     edge_query = (
         select(
-            src.source_entity_id,
-            src.target_entity_id,
+            RelationshipModel.source_entity_id,
+            RelationshipModel.target_entity_id,
             ent_src.canonical_name.label("source_name"),
             ent_tgt.canonical_name.label("target_name"),
-            src.rel_type,
-            src.confidence,
+            RelationshipModel.rel_type,
+            RelationshipModel.confidence,
         )
         .join(
             ent_src,
-            src.source_entity_id == ent_src.entity_id,
+            RelationshipModel.source_entity_id == ent_src.entity_id,
         )
         .join(
             ent_tgt,
-            src.target_entity_id == ent_tgt.entity_id,
+            RelationshipModel.target_entity_id == ent_tgt.entity_id,
         )
         .where(
             (ent_src.canonical_name == vendor_name)

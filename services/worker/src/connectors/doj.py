@@ -80,8 +80,8 @@ class DOJConnector(BaseConnector):
         except httpx.HTTPStatusError as exc:
             code = exc.response.status_code
             if code in (401, 403, 404):
-                logger.warning(
-                    "doj_api_unavailable status=%d url=%s", code, url,
+                logger.error(
+                    "doj_connector_auth_failure status=%d url=%s", code, url,
                 )
                 return FetchResult(
                     artifacts=[], total_count=0, has_next=False,

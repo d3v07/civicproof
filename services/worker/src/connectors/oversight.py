@@ -64,8 +64,8 @@ class OversightGovConnector(BaseConnector):
         except httpx.HTTPStatusError as exc:
             code = exc.response.status_code
             if code in (401, 403, 404):
-                logger.warning(
-                    "oversight_gov_api_unavailable status=%d url=%s",
+                logger.error(
+                    "oversight_connector_auth_failure status=%d url=%s",
                     code, url,
                 )
                 return FetchResult(

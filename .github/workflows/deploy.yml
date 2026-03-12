@@ -1,18 +1,21 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
 
 env:
   PROJECT_ID: civicproof-prod
   REGION: us-central1
-  REGISTRY: us-central1-docker.pkg.dev/civicproof-prod/civicproof
+  REGISTRY: us-central1-docker.pkg.dev/$PROJECT_ID/civicproof
 
 jobs:
   deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       id-token: write
@@ -33,42 +36,42 @@ jobs:
 
       - name: Build and push images
         run: |
+          REGISTRY="us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/civicproof"
           for service in api worker gateway; do
             docker build \
               -f services/$service/Dockerfile . \
-              -t ${{ env.REGISTRY }}/$service:${{ github.sha }} \
-              -t ${{ env.REGISTRY }}/$service:latest
-            docker push ${{ env.REGISTRY }}/$service:${{ github.sha }}
-            docker push ${{ env.REGISTRY }}/$service:latest
+              -t $REGISTRY/$service:${{ github.event.workflow_run.head_sha }} \
+              -t $REGISTRY/$service:latest
+            docker push $REGISTRY/$service:${{ github.event.workflow_run.head_sha }}
+            docker push $REGISTRY/$service:latest
           done
+
+      - name: Run database migration
+        run: |
+          gcloud run jobs execute civicproof-migrator \
+            --region ${{ env.REGION }} \
+            --wait
 
       - name: Deploy API to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: civicproof-api
           region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/api:${{ github.sha }}
+          image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/civicproof/api:${{ github.event.workflow_run.head_sha }}
 
       - name: Deploy Worker to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: civicproof-worker
           region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/worker:${{ github.sha }}
+          image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/civicproof/worker:${{ github.event.workflow_run.head_sha }}
 
       - name: Deploy Gateway to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: civicproof-gateway
           region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/gateway:${{ github.sha }}
-
-      - name: Run database migration
-        run: |
-          gcloud run jobs execute civicproof-migrator \
-            --region ${{ env.REGION }} \
-            --wait \
-            || echo "Migration job not found or already up to date"
+          image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/civicproof/gateway:${{ github.event.workflow_run.head_sha }}
 
       - name: Verify deployment
         run: |
